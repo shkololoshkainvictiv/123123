@@ -1,0 +1,37 @@
+{
+  "id": "/",
+  "name": "OKKAM Warehouse Desktop",
+  "short_name": "OKKAM",
+  "description": "Десктопное приложение складской логистики ОККАМ с авторизацией и разграничением прав доступа.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "background_color": "#161922",
+  "theme_color": "#e85a1e",
+  "lang": "ru",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/invent/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/invent/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/invent/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

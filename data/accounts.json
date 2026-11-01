@@ -1,0 +1,88 @@
+[
+  {
+    "id": "admin",
+    "uid": "admin",
+    "login": "admin",
+    "email": "shkololoshka.invictiv@gmail.com",
+    "displayName": "Главный администратор ОККАМ",
+    "role": "admin",
+    "allowedSections": [
+      "dublikat",
+      "perepak",
+      "gtin",
+      "sborka",
+      "sverka",
+      "reestr",
+      "zakaz",
+      "x5",
+      "doki",
+      "invent",
+      "hd",
+      "tabel",
+      "zapolnenie",
+      "pros4et",
+      "delta",
+      "1",
+      "panel",
+      "tsd"
+    ],
+    "active": true,
+    "passwordHash": "ed1a04b2e12888f183707a1ec38fda02b96ebb37959ba46d3688a935cbb28bbc",
+    "createdAt": "2026-11-01T05:17:15.380Z",
+    "updatedAt": "2026-11-01T05:17:15.380Z"
+  },
+  {
+    "id": "operator_rt",
+    "uid": "operator_rt",
+    "login": "operator_rt",
+    "email": "",
+    "displayName": "Оператор печати и перепака",
+    "role": "user",
+    "allowedSections": [
+      "dublikat",
+      "perepak",
+      "gtin",
+      "doki"
+    ],
+    "active": true,
+    "passwordHash": "b9c3431e79ca0e6adbeb2ba7f873589d47d90d1cc4b0c7bfbe5e1298851584a0",
+    "createdAt": "2026-11-01T05:17:15.380Z",
+    "updatedAt": "2026-11-01T05:17:15.380Z"
+  },
+  {
+    "id": "kladovshik",
+    "uid": "kladovshik",
+    "login": "kladovshik",
+    "email": "",
+    "displayName": "Старший кладовщик (Учёт и ТС)",
+    "role": "user",
+    "allowedSections": [
+      "sborka",
+      "sverka",
+      "reestr",
+      "zakaz",
+      "x5",
+      "invent"
+    ],
+    "active": true,
+    "passwordHash": "b9c3431e79ca0e6adbeb2ba7f873589d47d90d1cc4b0c7bfbe5e1298851584a0",
+    "createdAt": "2026-11-01T05:17:15.380Z",
+    "updatedAt": "2026-11-01T05:17:15.380Z"
+  },
+  {
+    "id": "test_worker",
+    "uid": "test_worker",
+    "login": "test_worker",
+    "email": "",
+    "displayName": "Тестовый Сотрудник — Упаковщик",
+    "role": "user",
+    "allowedSections": [
+      "dublikat",
+      "doki"
+    ],
+    "active": true,
+    "passwordHash": "b9c3431e79ca0e6adbeb2ba7f873589d47d90d1cc4b0c7bfbe5e1298851584a0",
+    "createdAt": "2026-11-01T05:21:46.409Z",
+    "updatedAt": "2026-11-01T05:21:46.409Z"
+  }
+]

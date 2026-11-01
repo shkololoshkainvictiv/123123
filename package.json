@@ -1,0 +1,22 @@
+{
+  "name": "okkam-warehouse-suite",
+  "version": "6.6.3",
+  "private": true,
+  "description": "OKKAM Warehouse Logistics Suite",
+  "scripts": {
+    "dev": "npm run build && node server.js",
+    "build": "esbuild src/firebaseClient.ts --bundle --format=iife --target=es2020 --outfile=auth-bundle.js",
+    "start": "node server.js",
+    "lint": "npx eslint firestore.rules && node --check server.js && node --check lib/backendLogic.js && node --check lib/authStore.js"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "firebase": "^13.1.0",
+    "multer": "^2.5.0"
+  },
+  "devDependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.14.0"
+  }
+}

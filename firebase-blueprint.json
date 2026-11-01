@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "User account and role-based section access permissions for the OKKAM Warehouse Suite.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner UID or account creator UID matching request.auth.uid.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "login": {
+          "type": "string",
+          "description": "Unique login username or email address for the account.",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Full name or position description of the employee.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "description": "Access role: 'admin' has full access and user management; 'user' has access only to allowedSections.",
+          "enum": ["admin", "user"]
+        },
+        "allowedSections": {
+          "type": "array",
+          "description": "Bounded list of section slugs (up to 25) that this user is allowed to open.",
+          "maxLength": 25
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the account is active and permitted to sign in."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the account was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the account was last updated."
+        }
+      },
+      "required": [
+        "uid",
+        "login",
+        "displayName",
+        "role",
+        "allowedSections",
+        "active",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Trusted administrator registry document keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Administrator Firebase UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified administrator email.",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin marker was created."
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "User accounts and section access profiles managed by administrators and readable by their owner."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Trusted administrator UID lookup table."
+    }
+  }
+}
