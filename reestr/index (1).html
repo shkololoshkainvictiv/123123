@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#e85a1e">
+<title>Реестры отгрузок — Kiberbul'ka</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+@page { size: A4 landscape; margin: 5mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-y: scroll; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.06); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(61,90,158,.35); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(61,90,158,.55); }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e4e5eb; padding: 20px; color: #2a2a3a; -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+input, textarea { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+
+.container { max-width: 1200px; margin: 0 auto; }
+.back-btn { position: fixed; top: 20px; left: 20px; width: 46px; height: 46px; border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 7px 9px 20px rgba(30,30,60,.16); transition: all .25s; z-index: 1000; text-decoration: none; }
+.back-btn:hover { background: rgba(61,90,158,.08); transform: translateY(-2px); box-shadow: 9px 12px 26px rgba(30,30,60,.22); }
+.back-btn svg { width: 22px; height: 22px; fill: #3d5a9e; }
+
+.header { text-align: center; margin-bottom: 24px; padding: 32px 20px; background: linear-gradient(135deg, #e85a1e, #ff6f32 50%, #ff8855); border-radius: 16px; box-shadow: 8px 12px 28px rgba(200,70,20,.35); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.header-icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; background: rgba(255,255,255,.15); margin-bottom: 12px; border: 1px solid rgba(255,255,255,.2); opacity: 0; transform: scale(.5); transition: opacity .8s ease, transform .8s cubic-bezier(.34,1.56,.64,1); }
+.header-icon.visible { opacity: 1; transform: scale(1); animation: floatGlow 3s ease-in-out infinite; }
+.header-icon svg { width: 30px; height: 30px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes floatGlow { 0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 rgba(255,255,255,0); } 50% { transform: translateY(-3px) scale(1.03); box-shadow: 0 6px 15px rgba(255,255,255,0.25); } }
+.header h1 { font-size: 25px; color: #fff; font-weight: 700; }
+
+/* Tabs Styles */
+.tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+.tab-btn { padding: 12px 30px; font-size: 15px; font-weight: 700; border-radius: 12px; border: none; background: #d5d5e3; color: #4a4a65; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; }
+.tab-btn:hover { background: #c5c5d5; transform: translateY(-1px); }
+.tab-btn.active { background: #3d5a9e; color: #fff; box-shadow: 0 6px 18px rgba(61,90,158,0.3); transform: translateY(-2px); }
+.tab-pane { display: none; animation: fadeIn 0.4s ease; }
+.tab-pane.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.card { background: #f5f5fa; border-radius: 16px; padding: 28px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,.06); box-shadow: 10px 14px 36px rgba(30,30,60,.18); }
+.card h2 { font-size: 17px; margin-bottom: 18px; color: #4a4a65; border-bottom: 1px solid rgba(0,0,0,.08); padding-bottom: 10px; font-weight: 600; text-transform: uppercase; }
+.fg { margin-bottom: 20px; }
+.fg label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; color: #555570; text-transform: uppercase; }
+.fg input[type="text"] { width: 100%; max-width: 300px; padding: 12px 16px; border: 1px solid rgba(0,0,0,.1); border-radius: 10px; font-size: 16px; background: #dfe0e8; color: #1a1a2e; }
+.fg input:focus, .fg textarea:focus { outline: none; border-color: #3d5a9e; background: #d8d9e4; }
+
+.btn-print { padding: 14px 28px; font-size: 17px; font-weight: 700; background: linear-gradient(135deg, #2c6e49, #3a8f5c); color: #fff; border: none; border-radius: 12px; cursor: pointer; box-shadow: 6px 8px 20px rgba(44,110,73,.3); transition: all .25s; text-transform: uppercase; letter-spacing: .5px; display: inline-flex; align-items: center; gap: 8px; }
+.btn-print:hover { transform: translateY(-2px); box-shadow: 8px 10px 24px rgba(44,110,73,.4); }
+
+.registry-output { display: none; background: #fff; padding: 0 20px 20px 20px; border-radius: 16px; box-shadow: 10px 14px 36px rgba(30,30,60,.18); margin-top: 20px; overflow: hidden; width: 100%; }
+.registry-output.visible { display: block; }
+.registry-header-row { display: flex; align-items: center; justify-content: space-between; position: relative; padding-top: 0; }
+.table-brand { font-size: 27px; font-weight: 800; color: #2a2a3a; letter-spacing: .5px; }
+.registry-title { font-size: 18px; font-weight: bold; color: #2a2a3a; text-align: center; position: absolute; left: 50%; transform: translateX(-50%); }
+.table-counters { font-size: 13px; font-weight: 600; color: #2a2a3a; text-align: right; line-height: 1.3; }
+
+/* ======== REGIONTRANS STYLES ======== */
+#tab-region .registry-header-row { margin-bottom: 20px; }
+#tab-region textarea { width: 100%; height: 140px; padding: 14px 16px; border: 1px solid rgba(0,0,0,.1); border-radius: 10px; font-size: 14px; background: #dfe0e8; color: #1a1a2e; resize: vertical; font-family: 'Courier New', Courier, monospace; line-height: 1.4; white-space: pre-wrap; overflow-x: hidden; overflow-y: auto; }
+#tab-region textarea::placeholder { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; color: #6c6c80; }
+#tab-region table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#tab-region th, #tab-region td { border: 1px solid #7a7a8c; padding: 6px 10px; text-align: center; vertical-align: middle; }
+#tab-region th { background: #d5d5e3; font-weight: 600; color: #222; line-height: 1.2; white-space: normal; word-wrap: break-word; }
+#tab-region td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tab-region th:nth-child(1), #tab-region td:nth-child(1), #tab-region th:nth-child(2), #tab-region td:nth-child(2), #tab-region th:nth-child(3), #tab-region td:nth-child(3), #tab-region th:nth-child(4), #tab-region td:nth-child(4), #tab-region th:nth-child(5), #tab-region td:nth-child(5), #tab-region th:nth-child(6), #tab-region td:nth-child(6), #tab-region th:nth-child(7), #tab-region td:nth-child(7), #tab-region th:nth-child(8), #tab-region td:nth-child(8), #tab-region th:nth-child(9), #tab-region td:nth-child(9) { width: 1%; }
+#tab-region .highlight-prikhod { background-color: #ffeb3b !important; }
+#tab-region .highlight-client-yellow { background-color: #fff176 !important; }
+#tab-region .highlight-client-alert { background-color: #ffeb3b !important; font-weight: 600; }
+#tab-region .highlight-ochered-diff { background-color: #ffe0b2 !important; }
+#tab-region .group-separator { border-bottom: 3px solid #2a2a3a !important; }
+
+/* ======== ERMANN STYLES ======== */
+#tab-ermann .registry-header-row { margin-bottom: 16px; }
+#tab-ermann .drop-zone { width: 100%; border: 2px dashed #8392b8; border-radius: 10px; padding: 30px 20px; text-align: center; cursor: pointer; background: #dfe0e8; color: #1a1a2e; transition: all 0.2s ease; font-size: 15px; }
+#tab-ermann .drop-zone:hover, #tab-ermann .drop-zone.dragover { background: #d8d9e4; border-color: #3d5a9e; }
+#tab-ermann .drop-zone svg { width: 40px; height: 40px; fill: #3d5a9e; margin-bottom: 12px; }
+#tab-ermann .drop-zone span { font-size: 12px; color: #6c6c80; display: block; margin-top: 5px; }
+#tab-ermann .registry-notice { text-align: center; font-weight: bold; font-size: 13px; color: #1a1a2e; margin-bottom: 12px; padding: 8px 12px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 8px; line-height: 1.4; }
+#tab-ermann table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; }
+#tab-ermann th, #tab-ermann td { border: 1px solid #7a7a8c; padding: 5px 6px; text-align: center; vertical-align: middle; }
+#tab-ermann th { background: #d5d5e3; font-weight: 600; color: #222; line-height: 1.1; white-space: normal; word-wrap: break-word; }
+#tab-ermann td { white-space: pre-wrap; word-wrap: break-word; overflow: hidden; }
+#tab-ermann .group-separator td { height: 1.2mm !important; background-color: #2a2a3a !important; padding: 0 !important; border-left: none !important; border-right: none !important; }
+
+tr { page-break-inside: avoid; break-inside: avoid; }
+
+/* ======== PRINT MEDIA QUERY ======== */
+@media print {
+    body { background: #fff !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; box-sizing: border-box !important; }
+    .back-btn, .header, .tabs, .card { display: none !important; }
+    .tab-pane { display: none !important; }
+    .tab-pane.active { display: block !important; }
+    .registry-output { display: block !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; border: none !important; overflow: visible !important; }
+    
+    /* Print overrides for Regiontrans */
+    #tab-region table { font-size: 11px !important; }
+    #tab-region th, #tab-region td { padding: 4px 6px !important; border-color: #555 !important; }
+    
+    /* Print overrides for Ermann */
+    #tab-ermann .registry-header-row { margin-bottom: 4px !important; }
+    #tab-ermann .table-brand { font-size: 18px !important; }
+    #tab-ermann .registry-title { font-size: 14px !important; }
+    #tab-ermann .registry-notice { background: transparent !important; border: none !important; padding: 0 !important; margin-bottom: 4px !important; font-size: 8.5pt !important; line-height: 1.1 !important; }
+    #tab-ermann table { font-size: 7.5pt !important; table-layout: fixed !important; }
+    #tab-ermann th, #tab-ermann td { padding: 2px 2px !important; border-color: #333 !important; line-height: 1.1 !important; }
+    #tab-ermann .group-separator td { height: 0.8mm !important; }
+}
+</style>
+</head>
+<body>
+<a href="http://okkam.space" class="back-btn">
+<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="container">
+    <div class="header">
+        <div class="header-icon" id="headerIcon">
+            <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M3 9h18M3 15h18M9 3v18" />
+            </svg>
+        </div>
+        <h1>Печать реестров</h1>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="tabs">
+        <button class="tab-btn active" data-target="tab-region">Регионтранс</button>
+        <button class="tab-btn" data-target="tab-ermann">Эрманн</button>
+    </div>
+
+    <!-- Вкладка: РЕГИОНТРАНС -->
+    <div id="tab-region" class="tab-pane active">
+        <div class="card">
+            <h2>Регионтранс — Параметры</h2>
+            <div class="fg">
+                <label>Дата</label>
+                <input type="text" id="dateInputRegion" placeholder="ДД.ММ.ГГГГ" maxlength="10">
+            </div>
+            <div class="fg">
+                <label>Данные</label>
+                <textarea id="tableInputRegion" placeholder="Вставьте данные таблицы из Excel/Таблиц..."></textarea>
+            </div>
+            <button class="btn-print" id="btnPrintRegion">🖨️ Печать</button>
+        </div>
+
+        <div id="registry-output-region" class="registry-output">
+            <div class="registry-header-row">
+                <div class="table-brand">Регионтранс</div>
+                <div class="registry-title" id="registryTitleTextRegion">Отгрузка/Приход на </div>
+                <div class="table-counters" id="tableCountersLayerRegion">
+                    Отгрузки - 0 тс / (0) паллет<br>Приходы - 0 тс / (0) паллет
+                </div>
+            </div>
+            <div>
+                <table id="resultTableRegion">
+                    <thead>
+                        <tr>
+                            <th>Признак</th>
+                            <th>Очередь</th>
+                            <th>Заказ Но</th>
+                            <th>Время подачи</th>
+                            <th>Клиент</th>
+                            <th>Паллет</th>
+                            <th>Номер Путевого МПК</th>
+                            <th>Госномер тягач</th>
+                            <th>Водитель</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyRegion"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вкладка: ЭРМАНН -->
+    <div id="tab-ermann" class="tab-pane">
+        <div class="card">
+            <h2>Эрманн — Параметры</h2>
+            <div class="fg">
+                <label>Дата</label>
+                <input type="text" id="dateInputErmann" placeholder="ДД.ММ.ГГГГ" maxlength="10">
+            </div>
+            <div class="fg">
+                <label>Данные</label>
+                <div id="dropZoneErmann" class="drop-zone">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    <br>Перетащите файл Excel (.xlsx) сюда
+                    <span>или нажмите для выбора файла</span>
+                    <input type="file" id="fileInputErmann" accept=".xlsx, .xls" hidden>
+                </div>
+            </div>
+            <button class="btn-print" id="btnPrintErmann">🖨️ Печать</button>
+        </div>
+
+        <div id="registry-output-ermann" class="registry-output">
+            <div class="registry-header-row">
+                <div class="table-brand">Эрманн</div>
+                <div class="registry-title" id="registryTitleTextErmann">Реестр на </div>
+                <div class="table-counters"></div>
+            </div>
+            <div class="registry-notice">
+                <strong>Если водитель не приехал в плановое время, незамедлительно информировать ТО ОККАМ письмом, в экстренных случаях – телефонным звонком.</strong>
+            </div>
+            <div id="tableWrapperErmann">
+                <table id="resultTableErmann">
+                    <thead>
+                        <tr id="tableHeadRowErmann"></tr>
+                    </thead>
+                    <tbody id="tableBodyErmann"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+setTimeout(() => { location.reload(); }, 3600000);
+
+// ======= ГЛОБАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ =======
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => { document.getElementById('headerIcon').classList.add('visible'); }, 100);
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const yyyy = tomorrow.getFullYear();
+    const defaultDate = `${dd}.${mm}.${yyyy}`;
+    
+    // Date init for both tabs
+    dateInputRegion.value = defaultDate;
+    dateInputErmann.value = defaultDate;
+    updateTitleRegion();
+    updateTitleErmann();
+    
+    // Init Ermann Headers
+    const trHeadErmann = document.getElementById('tableHeadRowErmann');
+    expectedHeadersErmann.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        if (header === "Порядок погрузки") th.style.fontSize = "0.7em";
+        trHeadErmann.appendChild(th);
+    });
+});
+
+// ======= ЛОГИКА ВКЛАДОК =======
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabPanes = document.querySelectorAll('.tab-pane');
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanes.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.target).classList.add('active');
+        if (btn.dataset.target === 'tab-ermann') scaleTableErmann();
+    });
+});
+
+// ======= ЛОГИКА: РЕГИОНТРАНС =======
+const dateInputRegion = document.getElementById('dateInputRegion');
+const tableInputRegion = document.getElementById('tableInputRegion');
+const registryOutputRegion = document.getElementById('registry-output-region');
+const registryTitleTextRegion = document.getElementById('registryTitleTextRegion');
+const tableBodyRegion = document.getElementById('tableBodyRegion');
+const btnPrintRegion = document.getElementById('btnPrintRegion');
+const tableCountersLayerRegion = document.getElementById('tableCountersLayerRegion');
+
+dateInputRegion.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 2) value = value.substring(0, 2) + '.' + value.substring(2);
+    if (value.length > 4) value = value.substring(0, 5) + '.' + value.substring(5, 9);
+    e.target.value = value;
+    updateTitleRegion();
+});
+
+function updateTitleRegion() {
+    registryTitleTextRegion.textContent = `Отгрузка/Приход на ${dateInputRegion.value.trim() || '________'}`;
+}
+
+function processRegistryRegion() {
+    const text = tableInputRegion.value.trim();
+    if (!text) {
+        registryOutputRegion.classList.remove('visible');
+        tableCountersLayerRegion.innerHTML = 'Отгрузки - 0 тс / (0) паллет<br>Приходы - 0 тс / (0) паллет';
+        return;
+    }
+
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+
+    const firstLineCols = lines[0].split('\t');
+    const keywords = {
+        priznak: ['признак'], ochered: ['очередь'], zakaz: ['заказ'], time: ['время', 'подачи'],
+        client: ['клиент', 'поиск', 'имя'], pallet: ['паллет'], mpk: ['путев', 'мпк'],
+        truck: ['тягач', 'госномер'], driver: ['водитель']
+    };
+    let indices = { priznak: 0, ochered: 1, zakaz: 2, time: 3, client: 4, pallet: 5, mpk: 6, truck: 7, driver: 8 };
+    let startIndex = 0, matchCount = 0;
+
+    firstLineCols.forEach(col => {
+        const lower = col.toLowerCase();
+        for (let key in keywords) { if (keywords[key].some(kw => lower.includes(kw))) { matchCount++; break; } }
+    });
+
+    if (matchCount >= 2) {
+        startIndex = 1;
+        firstLineCols.forEach((col, idx) => {
+            const lower = col.toLowerCase();
+            if (keywords.priznak.some(kw => lower.includes(kw))) indices.priznak = idx;
+            if (keywords.ochered.some(kw => lower.includes(kw))) indices.ochered = idx;
+            if (keywords.zakaz.some(kw => lower.includes(kw))) indices.zakaz = idx;
+            if (keywords.time.some(kw => lower.includes(kw))) indices.time = idx;
+            if (keywords.client.some(kw => lower.includes(kw))) indices.client = idx;
+            if (keywords.pallet.some(kw => lower.includes(kw))) indices.pallet = idx;
+            if (keywords.mpk.some(kw => lower.includes(kw))) indices.mpk = idx;
+            if (keywords.truck.some(kw => lower.includes(kw)) && !lower.includes('прицеп')) indices.truck = idx;
+            if (keywords.driver.some(kw => lower.includes(kw))) indices.driver = idx;
+        });
+    }
+
+    let rowsData = [];
+    for (let i = startIndex; i < lines.length; i++) {
+        const cols = lines[i].split('\t');
+        rowsData.push({
+            priznak: (cols[indices.priznak] || '').trim(), ochered: (cols[indices.ochered] || '').trim(),
+            zakaz: (cols[indices.zakaz] || '').trim(), time: (cols[indices.time] || '').trim(),
+            client: (cols[indices.client] || '').trim(), pallet: (cols[indices.pallet] || '').trim(),
+            mpk: (cols[indices.mpk] || '').trim(), truck: (cols[indices.truck] || '').trim(),
+            driver: (cols[indices.driver] || '').trim()
+        });
+    }
+
+    tableBodyRegion.innerHTML = '';
+    let shippingCount = 0, arrivalCount = 0, shippingPalletsTotal = 0, arrivalPalletsTotal = 0;
+    let currentGroupRows = [], allGroups = [];
+
+    function finishGroup() {
+        if (currentGroupRows.length === 0) return;
+        let hasShipping = false, hasArrival = false;
+        currentGroupRows.forEach(r => {
+            const pLower = r.priznak.toLowerCase();
+            const palletNum = parseFloat(r.pallet.replace(',', '.')) || 0;
+            const roundedPallet = Math.ceil(palletNum);
+            if (pLower.includes('отгруз')) { hasShipping = true; shippingPalletsTotal += roundedPallet; } 
+            else if (pLower.includes('приход')) { hasArrival = true; arrivalPalletsTotal += roundedPallet; }
+        });
+        if (hasShipping) shippingCount++;
+        if (hasArrival) arrivalCount++;
+        const shippingRows = currentGroupRows.filter(r => r.priznak.toLowerCase().includes('отгруз'));
+        let hasDifferentOchered = shippingRows.length > 1 && shippingRows.some(r => r.ochered !== shippingRows[0].ochered);
+        allGroups.push({ rows: [...currentGroupRows], hasDifferentOchered });
+        currentGroupRows = [];
+    }
+
+    rowsData.forEach((row, index, arr) => {
+        let isLastInGroup = false;
+        if (index < arr.length - 1) {
+            const next = arr[index + 1];
+            const sameVehicleFields = (row.time === next.time && row.truck === next.truck && row.driver === next.driver);
+            if ((!row.driver && !next.driver || !row.truck && !next.truck) && row.time === next.time && row.priznak === next.priznak) {
+                if (row.mpk !== next.mpk || !sameVehicleFields) isLastInGroup = true;
+            } else { if (!sameVehicleFields) isLastInGroup = true; }
+        } else { isLastInGroup = true; }
+        currentGroupRows.push(row);
+        if (isLastInGroup) finishGroup();
+    });
+
+    allGroups.forEach(group => {
+        group.rows.forEach((row, rIdx) => {
+            const tr = document.createElement('tr');
+            if (rIdx === group.rows.length - 1) tr.classList.add('group-separator');
+
+            const tdPriznak = document.createElement('td'); tdPriznak.textContent = row.priznak;
+            if (row.priznak.toLowerCase() === 'приход') tdPriznak.classList.add('highlight-prikhod');
+
+            const tdOchered = document.createElement('td'); tdOchered.textContent = row.ochered;
+            if (group.hasDifferentOchered && row.priznak.toLowerCase().includes('отгруз')) tdOchered.classList.add('highlight-ochered-diff');
+
+            const createTd = (text) => { const td = document.createElement('td'); td.textContent = text; return td; };
+            const tdClient = document.createElement('td'); 
+            const clientUpper = row.client.toUpperCase();
+            tdClient.textContent = row.client;
+            if (clientUpper.includes('БЭСТ') || clientUpper.includes('ТАБЫШ')) tdClient.classList.add('highlight-client-yellow');
+            else if (['ЧИЖИК', 'БРИСТОЛЬ', 'МЭТРО', 'МЕТРО'].some(c => clientUpper.includes(c))) {
+                tdClient.classList.add('highlight-client-alert'); tdClient.textContent = '⚠️ ' + row.client;
+            }
+
+            tr.appendChild(tdPriznak); tr.appendChild(tdOchered); tr.appendChild(createTd(row.zakaz));
+            tr.appendChild(createTd(row.time)); tr.appendChild(tdClient); tr.appendChild(createTd(row.pallet));
+            tr.appendChild(createTd(row.mpk)); tr.appendChild(createTd(row.truck)); tr.appendChild(createTd(row.driver));
+            tableBodyRegion.appendChild(tr);
+        });
+    });
+
+    tableCountersLayerRegion.innerHTML = `Отгрузки - ${shippingCount} тс / (${shippingPalletsTotal}) паллет<br>Приходы - ${arrivalCount} тс / (${arrivalPalletsTotal}) паллет`;
+    registryOutputRegion.classList.add('visible');
+}
+
+tableInputRegion.addEventListener('input', processRegistryRegion);
+tableInputRegion.addEventListener('paste', () => setTimeout(processRegistryRegion, 50));
+btnPrintRegion.addEventListener('click', () => { processRegistryRegion(); setTimeout(() => window.print(), 200); });
+
+// ======= ЛОГИКА: ЭРМАНН =======
+const expectedHeadersErmann = ["Время погрузки", "Время", "Порядок погрузки", "Поставка", "Имя получателя материала", "Город получателя материала", "Дата поставки", "Водитель", "Авто", "телефон", "Ко-во паллет"];
+const mergeColsErmann = ["Водитель", "Авто", "телефон", "Время погрузки", "Дата поставки"];
+const boldColsErmann = ["Поставка", "Время погрузки", "Водитель"];
+const STOP_TEXT_ERMANN = "при прибытии к грузоотправителю водитель обязан иметь при себе следующие документы:";
+
+const dateInputErmann = document.getElementById('dateInputErmann');
+const registryOutputErmann = document.getElementById('registry-output-ermann');
+const registryTitleTextErmann = document.getElementById('registryTitleTextErmann');
+const tableBodyErmann = document.getElementById('tableBodyErmann');
+const btnPrintErmann = document.getElementById('btnPrintErmann');
+const dropZoneErmann = document.getElementById('dropZoneErmann');
+const fileInputErmann = document.getElementById('fileInputErmann');
+
+dateInputErmann.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 2) value = value.substring(0, 2) + '.' + value.substring(2);
+    if (value.length > 4) value = value.substring(0, 5) + '.' + value.substring(5, 9);
+    e.target.value = value;
+    updateTitleErmann();
+});
+
+function updateTitleErmann() {
+    registryTitleTextErmann.textContent = `Реестр на ${dateInputErmann.value.trim() || '________'}`;
+}
+
+dropZoneErmann.addEventListener('click', () => fileInputErmann.click());
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZoneErmann.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+});
+['dragenter', 'dragover'].forEach(eventName => dropZoneErmann.addEventListener(eventName, () => dropZoneErmann.classList.add('dragover'), false));
+['dragleave', 'drop'].forEach(eventName => dropZoneErmann.addEventListener(eventName, () => dropZoneErmann.classList.remove('dragover'), false));
+dropZoneErmann.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) handleFileErmann(e.dataTransfer.files[0]); });
+fileInputErmann.addEventListener('change', (e) => { if (e.target.files.length) handleFileErmann(e.target.files[0]); });
+
+function normalizeStrErmann(val) {
+    if (val === null || val === undefined) return "";
+    return String(val).replace(/[\r\n\t\xa0]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function formatExcelValueErmann(val, colName) {
+    if (val === null || val === undefined || val === "") return "";
+    if (typeof val === 'number') {
+        const lowerCol = colName.toLowerCase();
+        if (lowerCol === "время погрузки") {
+            let excelDays = Math.floor(val), fraction = val - excelDays;
+            let dateStr = "";
+            if (excelDays > 0) {
+                let utc = new Date(new Date((excelDays - 25569) * 86400 * 1000).getTime() + Math.abs(new Date().getTimezoneOffset() * 60000));
+                dateStr = `${String(utc.getUTCDate()).padStart(2, '0')}.${String(utc.getUTCMonth() + 1).padStart(2, '0')}.${utc.getUTCFullYear()}`;
+            }
+            let totalSecs = Math.round(fraction * 86400);
+            let timeStr = `${String(Math.floor(totalSecs / 3600)).padStart(2, '0')}:${String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0')}`;
+            return (dateStr && fraction > 0) ? `${dateStr} ${timeStr}` : (dateStr || timeStr);
+        }
+        if (lowerCol.includes("время")) {
+            let fraction = val - Math.floor(val); if (val > 0 && val < 1) fraction = val;
+            let totalSecs = Math.round(fraction * 86400);
+            return `${String(Math.floor(totalSecs / 3600)).padStart(2, '0')}:${String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0')}`;
+        }
+        if (lowerCol.includes("дата")) {
+            let excelDays = Math.floor(val);
+            if (excelDays > 0) {
+                let utc = new Date(new Date((excelDays - 25569) * 86400 * 1000).getTime() + Math.abs(new Date().getTimezoneOffset() * 60000));
+                return `${String(utc.getUTCDate()).padStart(2, '0')}.${String(utc.getUTCMonth() + 1).padStart(2, '0')}.${utc.getUTCFullYear()}`;
+            }
+        }
+    }
+    return String(val);
+}
+
+function handleFileErmann(file) {
+    if (typeof XLSX === 'undefined') { alert("Библиотека SheetJS временно недоступна."); return; }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        processExcelDataErmann(XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""}));
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function processExcelDataErmann(json) {
+    if (!json || json.length === 0) { alert('Файл пуст.'); return; }
+    let headerRowIndex = -1; const colIndices = {};
+    for (let r = 0; r < json.length; r++) {
+        const row = json[r]; if (!Array.isArray(row)) continue;
+        let matches = 0; const tempIndices = {};
+        expectedHeadersErmann.forEach(eh => {
+            const idx = row.findIndex(cell => normalizeStrErmann(cell).toLowerCase() === normalizeStrErmann(eh).toLowerCase());
+            if (idx !== -1) { matches++; tempIndices[eh] = idx; } else tempIndices[eh] = -1;
+        });
+        if (matches >= 3) { headerRowIndex = r; Object.assign(colIndices, tempIndices); break; }
+    }
+    if (headerRowIndex === -1) { alert('Не удалось автоматически найти заголовки таблицы.'); return; }
+
+    let stopRowIndex = json.findIndex(row => Array.isArray(row) && row.some(cell => normalizeStrErmann(cell).toLowerCase().includes(STOP_TEXT_ERMANN)));
+    let maxRowIndex = stopRowIndex !== -1 ? Math.max(headerRowIndex + 1, stopRowIndex - 1) : json.length;
+
+    let groups = [], currentGroup = [], lastDriver = null;
+    for (let i = headerRowIndex + 1; i < maxRowIndex; i++) {
+        const row = json[i]; if (!row || !Array.isArray(row)) continue;
+        const hasData = expectedHeadersErmann.some(eh => colIndices[eh] !== -1 && row[colIndices[eh]] !== undefined && normalizeStrErmann(row[colIndices[eh]]) !== "");
+        if (!hasData) {
+            if (currentGroup.length > 0) { groups.push(currentGroup); currentGroup = []; lastDriver = null; }
+            continue;
+        }
+        const driverIdx = colIndices["Водитель"];
+        const driverVal = (driverIdx !== -1 && row[driverIdx] !== undefined) ? normalizeStrErmann(row[driverIdx]) : "";
+        if (currentGroup.length > 0 && driverVal !== lastDriver) { groups.push(currentGroup); currentGroup = []; }
+
+        const rowData = {};
+        expectedHeadersErmann.forEach(eh => {
+            let cellVal = (colIndices[eh] !== -1 && row[colIndices[eh]] !== undefined) ? row[colIndices[eh]] : "";
+            rowData[eh] = normalizeStrErmann(formatExcelValueErmann(cellVal, eh));
+        });
+        currentGroup.push(rowData);
+        lastDriver = driverVal;
+    }
+    if (currentGroup.length > 0) groups.push(currentGroup);
+    renderTableErmann(groups);
+}
+
+function renderTableErmann(groups) {
+    tableBodyErmann.innerHTML = '';
+    if (groups.length === 0) return;
+    groups.forEach((group, gIdx) => {
+        let rowspans = Array.from({length: group.length}, () => ({}));
+        for (let c of expectedHeadersErmann) {
+            if (mergeColsErmann.includes(c)) {
+                let i = 0;
+                while (i < group.length) {
+                    let span = 1;
+                    while (i + span < group.length && group[i][c] === group[i + span][c] && group[i][c] !== "") span++;
+                    rowspans[i][c] = span;
+                    for (let j = 1; j < span; j++) rowspans[i + j][c] = 0;
+                    i += span;
+                }
+            } else { for(let i = 0; i < group.length; i++) rowspans[i][c] = 1; }
+        }
+
+        group.forEach((row, rIdx) => {
+            const tr = document.createElement('tr');
+            expectedHeadersErmann.forEach(c => {
+                const span = rowspans[rIdx][c];
+                if (span === 0) return;
+                const td = document.createElement('td');
+                let cellText = row[c];
+                if (c.toLowerCase() === "телефон") cellText = cellText.replace(/,/g, ',\n');
+                td.textContent = cellText;
+                if (boldColsErmann.includes(c)) td.style.fontWeight = 'bold';
+                if (span > 1) td.setAttribute('rowspan', span);
+                tr.appendChild(td);
+            });
+            tableBodyErmann.appendChild(tr);
+        });
+        if (gIdx < groups.length - 1) {
+            const sepTr = document.createElement('tr');
+            sepTr.className = 'group-separator';
+            const sepTd = document.createElement('td');
+            sepTd.setAttribute('colspan', expectedHeadersErmann.length);
+            sepTr.appendChild(sepTd);
+            tableBodyErmann.appendChild(sepTr);
+        }
+    });
+    registryOutputErmann.classList.add('visible');
+    setTimeout(scaleTableErmann, 50);
+}
+
+function scaleTableErmann() {
+    const wrapper = document.getElementById('registry-output-ermann');
+    const table = document.getElementById('resultTableErmann');
+    if (!wrapper || !table || !registryOutputErmann.classList.contains('visible')) return;
+    table.style.zoom = 1;
+    const wrapperWidth = wrapper.clientWidth - 40;
+    const tableWidth = table.scrollWidth;
+    if (tableWidth > wrapperWidth) {
+        table.style.zoom = (wrapperWidth / tableWidth) - 0.005;
+    }
+}
+
+window.addEventListener('resize', () => {
+    if(document.getElementById('tab-ermann').classList.contains('active')) scaleTableErmann();
+});
+
+btnPrintErmann.addEventListener('click', () => { setTimeout(() => window.print(), 200); });
+</script>
+</body>
+</html>

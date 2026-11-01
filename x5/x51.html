@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Обработка х5</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow-y:scroll}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:4px}
+::-webkit-scrollbar-thumb{background:rgba(61,90,158,.35);border-radius:4px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a}
+.container{max-width:1600px;width:96%;margin:0 auto;position:relative}
+
+.back-btn{position:fixed;top:20px;left:20px;width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:7px 9px 20px rgba(30,30,60,.16);transition:all .25s;z-index:1000;text-decoration:none;border:none;cursor:pointer}
+.back-btn:hover{background:rgba(61,90,158,.08);transform:translateY(-2px);box-shadow:9px 12px 26px rgba(30,30,60,.22)}
+.back-btn svg{width:24px;height:24px;fill:#3d5a9e}
+
+.header{text-align:center;margin-bottom:24px;padding:22px 20px;background:linear-gradient(135deg,#e85a1e 0%,#ff6f32 50%,#ff8855 100%);border-radius:16px;box-shadow:14px 18px 44px rgba(200,70,20,.35);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.header-icon-box{width:64px;height:64px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;backdrop-filter:blur(4px);box-shadow:0 8px 16px rgba(0,0,0,.1);animation:floatIcon 3s ease-in-out infinite}
+.header-icon-box svg{width:42px;height:42px}
+@keyframes floatIcon{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.03)}}
+.header h1{font-size:22px;color:#fff;font-weight:700}
+.header .subtitle{font-size:13px;color:rgba(255,255,255,.85);margin-top:4px}
+
+.card{background:#f5f5fa;border-radius:16px;padding:24px;margin-bottom:20px;border:1px solid rgba(0,0,0,.06);box-shadow:14px 18px 44px rgba(30,30,60,.15)}
+.card h2{font-size:15px;margin-bottom:16px;color:#4a4a65;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:8px;font-weight:600;text-transform:uppercase}
+
+.form-control{height:42px;padding:0 14px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;font-size:14px;color:#1a1a2e;outline:none;transition:all .2s;width:100%}
+.form-control:focus{border-color:#e85a1e;box-shadow:0 0 0 3px rgba(232,90,30,.15)}
+
+.upload-zone{border:2px dashed rgba(61,90,158,.4);padding:35px;text-align:center;border-radius:12px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.6);display:block}
+.upload-zone:hover{background:#fff;border-color:#3d5a9e}
+.upload-zone input{display:none}
+.upload-zone svg{width:40px;height:40px;fill:#3d5a9e;margin-bottom:8px}
+
+.file-info-row{display:flex;justify-content:center;align-items:stretch;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+#fileDateInfo{display:inline-flex;align-items:center;gap:6px;font-size:15px;font-weight:600;color:#3d5a9e;background:#fff;padding:8px 16px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.05);min-height:40px}
+#fileDateInfo span{color:#e85a1e}
+
+.update-drop-zone{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 14px;min-height:40px;min-width:140px;border-radius:10px;background:rgba(255,255,255,.6);border:2px dashed rgba(61,90,158,.3);cursor:pointer;font-weight:600;font-size:13px;color:#3d5a9e;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05);user-select:none;text-align:center}
+.update-drop-zone:hover{background:#fff;border-color:#3d5a9e}
+.update-drop-zone.drag-over{background:#fff;border-color:#3d5a9e;box-shadow:0 0 0 3px rgba(61,90,158,.15)}
+.update-drop-zone input{display:none}
+.update-drop-zone svg{width:18px;height:18px;fill:#3d5a9e;flex-shrink:0}
+
+.btn-download-incomplete{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;min-height:40px;border-radius:10px;background:#fff;border:1px solid rgba(0,0,0,.1);cursor:pointer;font-weight:600;font-size:14px;color:#8e44ad;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05);user-select:none}
+.btn-download-incomplete:hover{background:#f5eef8;border-color:#8e44ad}
+.btn-download-incomplete svg{width:18px;height:18px;fill:#8e44ad}
+
+.tabs{display:flex;gap:10px;margin-bottom:16px}
+.tab-btn{flex:1;height:44px;border-radius:10px;border:1px solid rgba(0,0,0,.1);background:#fff;color:#4a4a65;font-weight:600;cursor:pointer;transition:all .2s;font-size:14px}
+.tab-btn.active{background:#e85a1e;color:#fff;border-color:#e85a1e;box-shadow:4px 6px 16px rgba(232,90,30,.25)}
+
+.search-box{margin-bottom:16px}
+
+.group-card{background:#fff;border-radius:12px;border:1px solid rgba(0,0,0,.08);margin-bottom:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.04);display:flex;transition:all .2s}
+.group-card.pinned{border:2px solid #3d5a9e;box-shadow:0 4px 16px rgba(61,90,158,.18)}
+
+.group-content{flex:1;padding:16px;overflow-x:auto}
+.group-actions-sidebar{width:54px;background:#f0f0f5;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:12px;border-left:1px solid rgba(0,0,0,.08);flex-shrink:0}
+
+.sidebar-btn{width:36px;height:36px;border-radius:8px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.08)}
+.sidebar-btn:hover{transform:scale(1.05)}
+.btn-pin{color:#3d5a9e}
+.btn-pin.active{background:#3d5a9e;color:#fff}
+.btn-group-download{color:#2c6e49}
+.btn-group-download:hover:not(:disabled){background:#2c6e49;color:#fff}
+.btn-group-download:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+
+.downloaded-mark{font-size:18px;margin-top:auto;padding-bottom:4px;user-select:none;cursor:default}
+
+.data-table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:12px}
+.data-table th{background:#f5f5fa;padding:8px 10px;text-align:left;border-bottom:2px solid rgba(0,0,0,.06);color:#4a4a65;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.data-table td{padding:6px 10px;border-bottom:1px solid rgba(0,0,0,.04);color:#2a2a3a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.data-table tr:last-child td{border-bottom:none}
+
+.check-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:2px solid #bbb;border-radius:5px;cursor:pointer;margin-right:8px;vertical-align:middle;background:#fff;color:transparent;transition:all .2s;font-size:12px;user-select:none;flex-shrink:0}
+.check-btn.checked{background:#2c6e49;border-color:#2c6e49;color:#fff}
+
+.order-cell{display:flex;align-items:center;padding:2px 4px;border-radius:4px;transition:all .2s;overflow:hidden}
+.order-cell.highlight{background-color:rgba(44,110,73,.15);font-weight:600;color:#2c6e49}
+
+.buttons-row{display:flex;gap:16px;margin-top:10px}
+.btn-download-all, .btn-download-ready{flex:1;height:48px;border-radius:10px;border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+.btn-download-all{background:#2c6e49;box-shadow:4px 6px 14px rgba(44,110,73,.3)}
+.btn-download-all:hover{background:#358a5a;transform:translateY(-1px)}
+.btn-download-ready{background:#e85a1e;box-shadow:4px 6px 14px rgba(232,90,30,.3)}
+.btn-download-ready:hover{background:#ff6f32;transform:translateY(-1px)}
+
+.empty-state{text-align:center;padding:40px;color:#7a7b90;font-size:14px;background:#fff;border-radius:12px;border:1px dashed rgba(0,0,0,.1)}
+
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:2000;animation:fadeIn .2s}
+.modal-card{background:#fff;padding:24px 28px;border-radius:16px;max-width:460px;width:90%;text-align:center;box-shadow:0 12px 32px rgba(0,0,0,.2);border:1px solid rgba(0,0,0,.08)}
+.modal-title{font-size:17px;font-weight:700;color:#2a2a3a;margin-bottom:10px}
+.modal-text{font-size:14px;color:#4a4a65;margin-bottom:22px;line-height:1.45}
+.modal-btn{height:40px;padding:0 28px;border-radius:10px;border:none;background:#e85a1e;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 4px 12px rgba(232,90,30,.3);margin:0 4px}
+.modal-btn:hover{background:#ff6f32}
+.modal-btn.secondary{background:#8e44ad;box-shadow:0 4px 12px rgba(142,68,173,.3)}
+.modal-btn.secondary:hover{background:#a569bd}
+.modal-btn.cancel{background:#888;box-shadow:0 4px 12px rgba(100,100,100,.3)}
+.modal-btn.cancel:hover{background:#a0a0a0}
+.modal-btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+
+@keyframes fadeIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+
+#mainWorkspace{display:none}
+</style>
+</head>
+<body>
+
+<a href="https://okkam.space/" class="back-btn" title="Назад">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon-box">
+      <svg viewBox="0 0 100 100">
+        <text x="50%" y="55%" dominant-baseline="central" text-anchor="middle" fill="#ffffff" font-size="42" font-weight="900" font-family="sans-serif">X5</text>
+      </svg>
+    </div>
+    <h1>Обработка х5</h1>
+    <div class="subtitle">фильтрация, сверка и разделение</div>
+  </div>
+
+  <div class="card" id="uploadCard">
+    <h2>Загрузка файла</h2>
+    <label class="upload-zone" id="dropZone">
+      <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <br>
+      <strong>Нажмите для выбора XLSX файла</strong> или перетащите его сюда
+      <input type="file" id="fileInput" accept=".xlsx">
+    </label>
+    <div id="statusMsg" style="text-align:center;margin-top:12px;font-weight:600;font-size:14px;color:#d9534f"></div>
+  </div>
+
+  <div id="mainWorkspace">
+    <div class="file-info-row" id="fileInfoRow" style="display:none">
+      <label class="update-drop-zone" id="updateDropZone" title="Перетащите обновлённый файл сюда">
+        <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+        <span>Загрузить файл с правками</span>
+        <input type="file" id="updateFileInput" accept=".xlsx">
+      </label>
+      <div id="fileDateInfo"></div>
+      <button class="btn-download-incomplete" id="btnDownloadIncomplete" title="Скачать незавершённые строки">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6h8v2H8v-2zm0-3h8v2H8v-2z"/></svg>
+        <span>Скачать незавершённые</span>
+      </button>
+    </div>
+    <div class="tabs" id="tabsContainer"></div>
+    <div class="search-box">
+      <input type="text" id="searchInput" class="form-control" placeholder="Поиск по номеру заказа, ФИО водителя, авто и др.">
+    </div>
+    <div id="groupsContainer"></div>
+    
+    <div class="buttons-row">
+      <button class="btn-download-all" id="btnDownloadAll">
+        Скачать закреплённые строки
+      </button>
+      <button class="btn-download-ready" id="btnDownloadReady">✅ Скачать готовые группы</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-title" id="modalTitle">Уведомление</div>
+    <div class="modal-text" id="modalText"></div>
+    <div id="modalActions">
+      <button class="modal-btn" onclick="closeModal()">Понятно</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="downloadOptionsOverlay">
+  <div class="modal-card">
+    <div class="modal-title">Скачать незавершённые строки</div>
+    <div class="modal-text">Выберите вариант скачивания:</div>
+    <div class="modal-btn-row" id="downloadOptionsBtns"></div>
+    <button class="modal-btn cancel" onclick="closeDownloadOptions()">Отмена</button>
+  </div>
+</div>
+
+<script>
+let globalData = {};
+let currentTabName = '';
+let currentFileName = '';
+let currentDateTag = '';
+const REQUIRED_SHEETS = ["Вход на ПСГ", "Выход с ПСГ"];
+const STORAGE_PREFIX = 'x5_state_';
+
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const statusMsg = document.getElementById('statusMsg');
+const uploadCard = document.getElementById('uploadCard');
+const mainWorkspace = document.getElementById('mainWorkspace');
+const tabsContainer = document.getElementById('tabsContainer');
+const groupsContainer = document.getElementById('groupsContainer');
+const searchInput = document.getElementById('searchInput');
+const fileDateInfo = document.getElementById('fileDateInfo');
+const fileInfoRow = document.getElementById('fileInfoRow');
+const updateDropZone = document.getElementById('updateDropZone');
+const updateFileInput = document.getElementById('updateFileInput');
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+function showAlert(text, title = 'Уведомление') {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  document.getElementById('modalActions').innerHTML = '<button class="modal-btn" onclick="closeModal()">Понятно</button>';
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function closeModal() { 
+  document.getElementById('modalOverlay').style.display = 'none'; 
+}
+
+function showUpdateConfirm(text, onConfirm, onCancel) {
+  document.getElementById('modalTitle').textContent = 'Подтверждение';
+  document.getElementById('modalText').textContent = text;
+  document.getElementById('modalActions').innerHTML = `
+    <button class="modal-btn" id="confirmBtn">Заменить принудительно</button>
+    <button class="modal-btn cancel" id="cancelBtn">Отмена</button>
+  `;
+  document.getElementById('confirmBtn').onclick = () => { closeModal(); onConfirm(); };
+  document.getElementById('cancelBtn').onclick = () => { closeModal(); if (onCancel) onCancel(); };
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function getRowKey(row) {
+  return JSON.stringify(row.vals);
+}
+
+function getGroupId(group) {
+  const keys = group.map(r => getRowKey(r)).sort();
+  const str = keys.join('|');
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'g_' + hash;
+}
+
+function getStorageKey() {
+  return currentDateTag || currentFileName || 'default';
+}
+
+function saveState() {
+  if (!currentDateTag) return;
+  const state = {};
+  for (let sheetName in globalData) {
+    state[sheetName] = globalData[sheetName].groups.map(g => ({
+      id: getGroupId(g),
+      pinned: !!g.pinned,
+      downloaded: !!g.downloaded,
+      rows: g.map(r => ({
+        key: getRowKey(r),
+        checked: !!r.checked
+      }))
+    }));
+  }
+  try {
+    localStorage.setItem(STORAGE_PREFIX + getStorageKey(), JSON.stringify(state));
+  } catch (e) {}
+}
+
+function applyState() {
+  if (!currentDateTag) return;
+  let saved;
+  try {
+    saved = JSON.parse(localStorage.getItem(STORAGE_PREFIX + getStorageKey()) || 'null');
+  } catch (e) { return; }
+  if (!saved) return;
+
+  for (let sheetName in globalData) {
+    if (!saved[sheetName]) continue;
+    const savedGroups = saved[sheetName];
+
+    const rowMap = {};
+    savedGroups.forEach(sg => {
+      sg.rows.forEach(r => { rowMap[r.key] = r.checked; });
+    });
+
+    const groupMap = {};
+    savedGroups.forEach(sg => {
+      groupMap[sg.id] = { 
+        pinned: sg.pinned, 
+        downloaded: sg.downloaded
+      };
+    });
+
+    globalData[sheetName].groups.forEach(g => {
+      g.forEach(r => {
+        const key = getRowKey(r);
+        if (key in rowMap) r.checked = rowMap[key];
+      });
+      const id = getGroupId(g);
+      if (groupMap[id]) {
+        g.pinned = groupMap[id].pinned;
+        g.downloaded = groupMap[id].downloaded;
+      }
+    });
+  }
+}
+
+fileInput.addEventListener('change', () => handleFile(false));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background = '#fff'; });
+dropZone.addEventListener('dragleave', e => { dropZone.style.background = ''; });
+dropZone.addEventListener('drop', e => { 
+  e.preventDefault(); 
+  dropZone.style.background = ''; 
+  if(e.dataTransfer.files.length) { 
+    fileInput.files = e.dataTransfer.files; 
+    handleFile(false); 
+  }
+});
+
+updateDropZone.addEventListener('dragover', e => { 
+  e.preventDefault(); 
+  updateDropZone.classList.add('drag-over'); 
+});
+updateDropZone.addEventListener('dragleave', e => { 
+  updateDropZone.classList.remove('drag-over'); 
+});
+updateDropZone.addEventListener('drop', e => { 
+  e.preventDefault(); 
+  updateDropZone.classList.remove('drag-over'); 
+  if(e.dataTransfer.files.length) { 
+    updateFileInput.files = e.dataTransfer.files; 
+    handleFile(true); 
+  }
+});
+
+updateFileInput.addEventListener('change', () => handleFile(true));
+
+function extractDateTag(fileName) {
+  const m = fileName.match(/\d{2}\.\d{2}\s*-\s*\d{2}\.\d{2}/);
+  return m ? m[0] : null;
+}
+
+async function handleFile(isUpdate) {
+  const input = isUpdate ? updateFileInput : fileInput;
+  if (!input.files.length) return;
+  
+  statusMsg.textContent = isUpdate ? 'Обновление файла...' : 'Обработка файла...';
+  statusMsg.style.color = '#3d5a9e';
+  
+  if (!isUpdate) {
+    statusMsg.parentElement.style.display = 'block';
+  }
+
+  const file = input.files[0];
+  const dateMatch = extractDateTag(file.name);
+
+  if (isUpdate && currentDateTag && dateMatch && dateMatch !== currentDateTag) {
+    showUpdateConfirm(`Дата нового файла (${dateMatch}) не совпадает с текущей (${currentDateTag}). Заменить принудительно?`, async () => {
+      await processFile(file, dateMatch, isUpdate);
+    }, () => {
+      statusMsg.textContent = '';
+      updateFileInput.value = '';
+    });
+    return;
+  }
+
+  await processFile(file, dateMatch, isUpdate);
+}
+
+async function processFile(file, dateMatch, isUpdate) {
+  statusMsg.textContent = isUpdate ? 'Обновление файла...' : 'Обработка файла...';
+  statusMsg.style.color = '#3d5a9e';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+
+  try {
+    await workbook.xlsx.load(arrayBuffer);
+
+    const newData = {};
+    let sheetsFound = 0;
+
+    workbook.eachSheet((worksheet) => {
+      const name = worksheet.name.trim();
+      if (REQUIRED_SHEETS.includes(name)) {
+        newData[name] = processSheetData(worksheet, name);
+        sheetsFound++;
+      }
+    });
+
+    if (sheetsFound === 0) {
+      statusMsg.textContent = 'Ошибка: В файле отсутствуют нужные листы!';
+      statusMsg.style.color = '#d9534f';
+      return;
+    }
+
+    applyNewData(newData, file.name, dateMatch, isUpdate);
+  } catch (err) {
+    statusMsg.textContent = 'Ошибка чтения файла: ' + err.message;
+    statusMsg.style.color = '#d9534f';
+  }
+}
+
+function applyNewData(newData, fileName, dateMatch, isUpdate = false) {
+  if (!isUpdate) {
+    globalData = newData;
+    currentFileName = fileName;
+    currentDateTag = dateMatch || '';
+
+    if (dateMatch) {
+      fileDateInfo.innerHTML = `📁 Файл за: <span>${dateMatch}</span>`;
+    } else {
+      fileDateInfo.innerHTML = `📁 Файл: <span>${fileName}</span>`;
+      currentDateTag = fileName;
+    }
+
+    uploadCard.style.display = 'none';
+    mainWorkspace.style.display = 'block';
+    fileInfoRow.style.display = 'flex';
+    applyState();
+    renderTabs();
+    saveState();
+  } else {
+    for (let sheetName in newData) {
+      if (!globalData[sheetName]) {
+        globalData[sheetName] = newData[sheetName];
+        continue;
+      }
+
+      const oldRowMap = {};
+      const oldGroupMap = {};
+      globalData[sheetName].groups.forEach(g => {
+        g.forEach(r => {
+          oldRowMap[getRowKey(r)] = r.checked;
+        });
+        const id = getGroupId(g);
+        oldGroupMap[id] = { 
+          pinned: g.pinned, 
+          downloaded: g.downloaded,
+          incompleteExported: g.incompleteExported
+        };
+      });
+
+      newData[sheetName].groups.forEach(g => {
+        g.forEach(r => {
+          const key = getRowKey(r);
+          if (key in oldRowMap) r.checked = oldRowMap[key];
+        });
+        const id = getGroupId(g);
+        if (oldGroupMap[id]) {
+          g.pinned = oldGroupMap[id].pinned;
+          g.downloaded = oldGroupMap[id].downloaded;
+          g.incompleteExported = oldGroupMap[id].incompleteExported;
+        }
+      });
+
+      globalData[sheetName] = newData[sheetName];
+    }
+
+    currentFileName = fileName;
+    if (dateMatch) currentDateTag = dateMatch;
+    if (dateMatch) fileDateInfo.innerHTML = `📁 Файл за: <span>${dateMatch}</span>`;
+
+    renderTabs();
+    saveState();
+    showAlert('Файл обновлён. Галочки для неизменённых строк сохранены.');
+  }
+
+  statusMsg.textContent = '';
+  updateFileInput.value = '';
+}
+
+function processSheetData(worksheet, sheetName) {
+  let headerCells = [];
+  let colWidths = [];
+  let rowsData = [];
+
+  worksheet.columns.forEach((col, idx) => {
+    colWidths[idx + 1] = col.width || 15;
+  });
+
+  let orderIdx = -1, driverIdx = -1, rcIdx = -1;
+
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) {
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        headerCells[colNumber] = {
+          value: cell.value,
+          text: cell.text || '',
+          style: cell.style ? JSON.parse(JSON.stringify(cell.style)) : {}
+        };
+        const lowText = (cell.text || '').toLowerCase();
+        if (lowText.includes('номер заказа')) orderIdx = colNumber;
+        if (lowText.includes('фио')) driverIdx = colNumber;
+        if (lowText.includes('рц псг (первый получатель)')) rcIdx = colNumber;
+      });
+    } else {
+      let rowCells = [];
+      let rowVals = [];
+      let firstCellColor = 'none';
+
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        if (sheetName === 'Выход с ПСГ' && colNumber === rcIdx) {
+          cell.value = null;
+          cell.text = '';
+        }
+
+        const cStyle = cell.style ? JSON.parse(JSON.stringify(cell.style)) : {};
+        rowCells[colNumber] = { value: cell.value, text: cell.text || '', style: cStyle };
+        rowVals[colNumber] = cell.text || '';
+
+        if (colNumber === 1 && cell.fill) firstCellColor = JSON.stringify(cell.fill);
+      });
+
+      if (firstCellColor === 'none') {
+        let anyFill = row.getCell(2).fill || row.getCell(3).fill;
+        if (anyFill) firstCellColor = JSON.stringify(anyFill);
+      }
+
+      rowsData.push({ cells: rowCells, vals: rowVals, colorId: firstCellColor, checked: false });
+    }
+  });
+
+  let groups = [];
+  let currentGroup = [];
+  let lastColor = null;
+  let lastDriver = null;
+
+  rowsData.forEach(r => {
+    let currentDriver = driverIdx !== -1 ? r.vals[driverIdx] : '';
+    if (currentGroup.length === 0) {
+      currentGroup.push(r);
+    } else {
+      if (r.colorId === lastColor && currentDriver === lastDriver) {
+        currentGroup.push(r);
+      } else {
+        groups.push(currentGroup);
+        currentGroup = [r];
+      }
+    }
+    lastColor = r.colorId;
+    lastDriver = currentDriver;
+  });
+  if (currentGroup.length > 0) groups.push(currentGroup);
+
+  return {
+    headers: headerCells,
+    colWidths: colWidths,
+    groups: groups,
+    orderColIdx: orderIdx,
+    driverColIdx: driverIdx
+  };
+}
+
+function renderTabs() {
+  tabsContainer.innerHTML = '';
+  let firstTab = true;
+  for (let sheetName in globalData) {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (firstTab ? ' active' : '');
+    btn.textContent = sheetName;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTabName = sheetName;
+      searchInput.value = '';
+      renderGroups();
+    };
+    tabsContainer.appendChild(btn);
+    if (firstTab) { currentTabName = sheetName; firstTab = false; }
+  }
+  renderGroups();
+}
+
+function renderGroups() {
+  groupsContainer.innerHTML = '';
+  const sheetData = globalData[currentTabName];
+  if (!sheetData) return;
+
+  const searchTerm = searchInput.value.toLowerCase().trim();
+
+  let pinnedGroups = [];
+  let searchedNotDownloaded = [];
+  let searchedDownloaded = [];
+
+  sheetData.groups.forEach((group, index) => {
+    group._originalIndex = index;
+    if (group.pinned) {
+      pinnedGroups.push(group);
+    } else if (searchTerm) {
+      const isMatch = group.some(row => row.vals.some(val => val && val.toString().toLowerCase().includes(searchTerm)));
+      if (isMatch) {
+        if (group.downloaded) {
+          searchedDownloaded.push(group);
+        } else {
+          searchedNotDownloaded.push(group);
+        }
+      }
+    }
+  });
+
+  const displayGroups = [...pinnedGroups, ...searchedNotDownloaded, ...searchedDownloaded];
+
+  if (displayGroups.length === 0) {
+    groupsContainer.innerHTML = `
+      <div class="empty-state">
+        ${searchTerm ? 'Ничего не найдено по вашему запросу.' : 'Введите данные в поле поиска выше для отображения результатов.'}
+      </div>`;
+    return;
+  }
+
+  let renderIndices = [];
+  sheetData.headers.forEach((h, i) => { if (i > 0 && h) renderIndices.push(i); });
+
+  if (sheetData.orderColIdx !== -1 && sheetData.driverColIdx !== -1) {
+    renderIndices = renderIndices.filter(i => i !== sheetData.driverColIdx);
+    const orderPos = renderIndices.indexOf(sheetData.orderColIdx);
+    if (orderPos !== -1) {
+      renderIndices.splice(orderPos + 1, 0, sheetData.driverColIdx);
+    } else {
+      renderIndices.push(sheetData.driverColIdx);
+    }
+  }
+
+  let colGroupHtml = '<colgroup>';
+  renderIndices.forEach(idx => {
+    const w = sheetData.colWidths[idx] ? (sheetData.colWidths[idx] * 8.5 + 20) : 100;
+    colGroupHtml += `<col style="width:${w}px">`;
+  });
+  colGroupHtml += '</colgroup>';
+
+  displayGroups.forEach((group) => {
+    const groupIdx = group._originalIndex;
+    const isAllChecked = group.every(r => r.checked);
+
+    const card = document.createElement('div');
+    card.className = 'group-card' + (group.pinned ? ' pinned' : '');
+    card.id = `group-${groupIdx}`;
+
+    let tableHtml = `<table class="data-table">${colGroupHtml}<thead><tr>`;
+    renderIndices.forEach(idx => { tableHtml += `<th>${sheetData.headers[idx].text}</th>`; });
+    tableHtml += `</tr></thead><tbody>`;
+
+    group.forEach((row, rowIdx) => {
+      tableHtml += `<tr>`;
+      renderIndices.forEach(colIdx => {
+        let val = row.vals[colIdx] || '';
+        let cellContent = val;
+        if (colIdx === sheetData.orderColIdx) {
+          const checkedClass = row.checked ? 'checked' : '';
+          const bgClass = row.checked ? 'highlight' : '';
+          cellContent = `
+            <div class="order-cell ${bgClass}" id="cell-${groupIdx}-${rowIdx}">
+              <div class="check-btn ${checkedClass}" onclick="toggleCheck(${groupIdx}, ${rowIdx}, this)">✔</div>
+              <span style="overflow:hidden;text-overflow:ellipsis">${val}</span>
+            </div>`;
+        }
+        tableHtml += `<td>${cellContent}</td>`;
+      });
+      tableHtml += `</tr>`;
+    });
+    tableHtml += `</tbody></table>`;
+
+    card.innerHTML = `
+      <div class="group-content">
+        ${tableHtml}
+      </div>
+      <div class="group-actions-sidebar">
+        <button class="sidebar-btn btn-pin ${group.pinned ? 'active' : ''}" title="${group.pinned ? 'Открепить' : 'Закрепить'}" onclick="togglePin(${groupIdx})">📌</button>
+        <button class="sidebar-btn btn-group-download" title="Скачать эту группу" ${!isAllChecked ? 'disabled' : ''} onclick="downloadGroup(${groupIdx})">📥</button>
+        ${group.downloaded ? '<div class="downloaded-mark" title="Группа скачана">✅</div>' : ''}
+      </div>
+    `;
+    groupsContainer.appendChild(card);
+  });
+}
+
+searchInput.addEventListener('input', renderGroups);
+
+window.togglePin = function(groupIdx) {
+  const group = globalData[currentTabName].groups[groupIdx];
+  group.pinned = !group.pinned;
+  if (searchInput.value.trim() !== '') searchInput.value = '';
+  renderGroups();
+  saveState();
+};
+
+window.toggleCheck = function(groupIdx, rowIdx, btnElem) {
+  const group = globalData[currentTabName].groups[groupIdx];
+  group[rowIdx].checked = !group[rowIdx].checked;
+
+  if (group[rowIdx].checked && !group.pinned) {
+    group.pinned = true;
+  }
+
+  if (searchInput.value.trim() !== '') {
+    searchInput.value = '';
+    renderGroups();
+    saveState();
+    return;
+  }
+
+  const cellDiv = document.getElementById(`cell-${groupIdx}-${rowIdx}`);
+  if (group[rowIdx].checked) {
+    btnElem.classList.add('checked');
+    cellDiv.classList.add('highlight');
+  } else {
+    btnElem.classList.remove('checked');
+    cellDiv.classList.remove('highlight');
+  }
+
+  const isAllChecked = group.every(r => r.checked);
+  const card = document.getElementById(`group-${groupIdx}`);
+  if (card) {
+    const dlBtn = card.querySelector('.btn-group-download');
+    if (dlBtn) dlBtn.disabled = !isAllChecked;
+
+    if (group.pinned) {
+      const pinBtn = card.querySelector('.btn-pin');
+      if (pinBtn) {
+        pinBtn.classList.add('active');
+        pinBtn.title = 'Открепить';
+      }
+    }
+  }
+  saveState();
+};
+
+async function exportToXlsx(sheetName, headers, colWidths, rowsData, fileName) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(sheetName);
+
+  colWidths.forEach((w, colIdx) => {
+    if (w) ws.getColumn(colIdx).width = w;
+  });
+
+  const hRow = ws.getRow(1);
+  headers.forEach((hCell, colIdx) => {
+    if (!hCell) return;
+    const c = hRow.getCell(colIdx);
+    c.value = hCell.value;
+    if (hCell.style) c.style = hCell.style;
+  });
+  hRow.commit();
+
+  rowsData.forEach((rData, rIdx) => {
+    const rowObj = ws.getRow(rIdx + 2);
+    rData.cells.forEach((cellData, colIdx) => {
+      if (!cellData) return;
+      const c = rowObj.getCell(colIdx);
+      c.value = cellData.value;
+      if (cellData.style) c.style = cellData.style;
+    });
+    rowObj.commit();
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), fileName);
+}
+
+async function exportMultipleSheets(sheetsData, fileName) {
+  const wb = new ExcelJS.Workbook();
+  sheetsData.forEach(sd => {
+    const ws = wb.addWorksheet(sd.sheetName);
+    sd.colWidths.forEach((w, colIdx) => {
+      if (w) ws.getColumn(colIdx).width = w;
+    });
+    const hRow = ws.getRow(1);
+    sd.headers.forEach((hCell, colIdx) => {
+      if (!hCell) return;
+      const c = hRow.getCell(colIdx);
+      c.value = hCell.value;
+      if (hCell.style) c.style = hCell.style;
+    });
+    hRow.commit();
+    sd.rowsData.forEach((rData, rIdx) => {
+      const rowObj = ws.getRow(rIdx + 2);
+      rData.cells.forEach((cellData, colIdx) => {
+        if (!cellData) return;
+        const c = rowObj.getCell(colIdx);
+        c.value = cellData.value;
+        if (cellData.style) c.style = cellData.style;
+      });
+      rowObj.commit();
+    });
+  });
+  const buffer = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), fileName);
+}
+
+window.downloadGroup = async function(groupIdx) {
+  const sheetData = globalData[currentTabName];
+  const group = sheetData.groups[groupIdx];
+
+  if (!group.every(r => r.checked)) {
+    showAlert('Скачивание невозможно: в группе проставлены не все галочки!');
+    return;
+  }
+
+  let fileNameTag = 'Группа';
+  const orderNum = sheetData.orderColIdx !== -1 ? group[0].vals[sheetData.orderColIdx] : '';
+  if (orderNum) fileNameTag = `Заказ_${orderNum}`;
+
+  await exportToXlsx(currentTabName, sheetData.headers, sheetData.colWidths, group, `${currentTabName}_${fileNameTag}.xlsx`);
+  group.downloaded = true;
+  renderGroups();
+  saveState();
+};
+
+document.getElementById('btnDownloadAll').addEventListener('click', async function() {
+  const sheetData = globalData[currentTabName];
+  if (!sheetData) return;
+
+  const pinnedGroups = sheetData.groups.filter(g => g.pinned);
+
+  if (pinnedGroups.length === 0) {
+    showAlert('Нет закреплённых групп! Закрепите с помощью 📌 нужные группы перед скачиванием.');
+    return;
+  }
+
+  const incomplete = pinnedGroups.filter(g => !g.every(r => r.checked));
+  if (incomplete.length > 0) {
+    showAlert(`Скачивание невозможно: в закреплённых группах (${incomplete.length} шт.) проставлены не все галочки!`);
+    return;
+  }
+
+  let allExportRows = [];
+  pinnedGroups.forEach(group => { group.forEach(row => allExportRows.push(row)); });
+
+  await exportToXlsx(currentTabName, sheetData.headers, sheetData.colWidths, allExportRows, `${currentTabName}_Закрепленные_строки.xlsx`);
+  pinnedGroups.forEach(g => g.downloaded = true);
+  renderGroups();
+  saveState();
+});
+
+document.getElementById('btnDownloadReady').addEventListener('click', async function() {
+  const sheetData = globalData[currentTabName];
+  if (!sheetData) return;
+
+  const readyGroups = sheetData.groups.filter(g => g.every(r => r.checked));
+  if (readyGroups.length === 0) {
+    showAlert('Нет полностью готовых групп (где проставлены все галочки) для скачивания!');
+    return;
+  }
+
+  let allExportRows = [];
+  readyGroups.forEach(group => { group.forEach(row => allExportRows.push(row)); });
+
+  await exportToXlsx(currentTabName, sheetData.headers, sheetData.colWidths, allExportRows, `${currentTabName}_Готовые_группы.xlsx`);
+  readyGroups.forEach(g => g.downloaded = true);
+  renderGroups();
+  saveState();
+});
+
+document.getElementById('btnDownloadIncomplete').addEventListener('click', function() {
+  const availableSheets = Object.keys(globalData).filter(sheetName => {
+    return globalData[sheetName].groups.some(g => !g.downloaded && !g.incompleteExported);
+  });
+
+  if (availableSheets.length === 0) {
+    showAlert('Нет незавершённых групп для скачивания.');
+    return;
+  }
+
+  const overlay = document.getElementById('downloadOptionsOverlay');
+  const btns = document.getElementById('downloadOptionsBtns');
+  btns.innerHTML = '';
+
+  if (availableSheets.length === 1) {
+    const btn = document.createElement('button');
+    btn.className = 'modal-btn';
+    btn.textContent = '📄 Скачать';
+    btn.onclick = async () => {
+      closeDownloadOptions();
+      await downloadIncompleteSingle(availableSheets[0]);
+    };
+    btns.appendChild(btn);
+  } else {
+    const btnSingle = document.createElement('button');
+    btnSingle.className = 'modal-btn';
+    btnSingle.textContent = '📄 1 файл';
+    btnSingle.onclick = async () => {
+      closeDownloadOptions();
+      await downloadIncompleteCombined();
+    };
+    btns.appendChild(btnSingle);
+
+    const btnSeparate = document.createElement('button');
+    btnSeparate.className = 'modal-btn secondary';
+    btnSeparate.textContent = '📁 По отдельности';
+    btnSeparate.onclick = async () => {
+      closeDownloadOptions();
+      await downloadIncompleteSeparate();
+    };
+    btns.appendChild(btnSeparate);
+  }
+
+  overlay.style.display = 'flex';
+});
+
+function closeDownloadOptions() {
+  document.getElementById('downloadOptionsOverlay').style.display = 'none';
+}
+
+function getIncompleteRows(sheetName) {
+  const sheetData = globalData[sheetName];
+  if (!sheetData) return [];
+  const rows = [];
+  sheetData.groups.forEach(g => {
+    if (!g.downloaded && !g.incompleteExported) g.forEach(r => rows.push(r));
+  });
+  return rows;
+}
+
+async function downloadIncompleteSingle(sheetName) {
+  const sheetData = globalData[sheetName];
+  const rows = getIncompleteRows(sheetName);
+  if (rows.length === 0) return;
+
+  const tag = currentDateTag || 'файл';
+  const label = sheetName === 'Вход на ПСГ' ? 'Вход' : 'Выход';
+  await exportToXlsx(sheetName, sheetData.headers, sheetData.colWidths, rows, `${tag} ${label}.xlsx`);
+
+  sheetData.groups.forEach(g => {
+    if (!g.downloaded) g.incompleteExported = true;
+  });
+  saveState();
+}
+
+async function downloadIncompleteCombined() {
+  const sheetsData = [];
+  const sheets = Object.keys(globalData);
+
+  sheets.forEach(sheetName => {
+    const rows = getIncompleteRows(sheetName);
+    if (rows.length > 0) {
+      sheetsData.push({
+        sheetName: sheetName,
+        headers: globalData[sheetName].headers,
+        colWidths: globalData[sheetName].colWidths,
+        rowsData: rows
+      });
+    }
+  });
+
+  if (sheetsData.length === 0) return;
+
+  const tag = currentDateTag || 'файл';
+  await exportMultipleSheets(sheetsData, `${tag} Вход-Выход.xlsx`);
+
+  sheets.forEach(sheetName => {
+    globalData[sheetName].groups.forEach(g => {
+      if (!g.downloaded) g.incompleteExported = true;
+    });
+  });
+  saveState();
+}
+
+async function downloadIncompleteSeparate() {
+  const sheets = Object.keys(globalData);
+
+  for (const sheetName of sheets) {
+    const rows = getIncompleteRows(sheetName);
+    if (rows.length === 0) continue;
+    const label = sheetName === 'Вход на ПСГ' ? 'Вход' : 'Выход';
+    const tag = currentDateTag || 'файл';
+    await exportToXlsx(sheetName, globalData[sheetName].headers, globalData[sheetName].colWidths, rows, `${tag} ${label}.xlsx`);
+  }
+
+  sheets.forEach(sheetName => {
+    globalData[sheetName].groups.forEach(g => {
+      if (!g.downloaded) g.incompleteExported = true;
+    });
+  });
+  saveState();
+}
+</script>
+</body>
+</html>

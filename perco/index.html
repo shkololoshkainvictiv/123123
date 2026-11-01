@@ -1,0 +1,1819 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Инвентаризация</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, .06); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(61, 90, 158, .35); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(61, 90, 158, .55); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #e4e5eb;
+  color: #2a2a3a;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hidden { display: none !important; }
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+
+.back-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 7px 9px 20px rgba(30, 30, 60, .16);
+  transition: all .25s;
+  z-index: 1600;
+  text-decoration: none;
+}
+.back-btn:hover { background: rgba(61, 90, 158, .08); transform: translateY(-2px); }
+.back-btn svg { width: 22px; height: 22px; fill: #3d5a9e; }
+.scan-mode .back-btn { display: none; }
+
+.header {
+  text-align: center;
+  margin-bottom: 4px;
+  padding: 24px 20px;
+  background: linear-gradient(135deg, #e85a1e, #ff6f32 50%, #ff8855);
+  border-radius: 16px;
+  box-shadow: 8px 12px 28px rgba(200, 70, 20, .35);
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(255,255,255,.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+}
+.header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.15);
+  backdrop-filter: blur(4px);
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,.2);
+  box-shadow: 4px 6px 14px rgba(0,0,0,.18);
+  color: #fff;
+}
+.header-icon svg { width: 28px; height: 28px; }
+.header h1 { font-size: 25px; color: #fff; font-weight: 700; position: relative; }
+
+.header-actions-right {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+}
+.wh-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,.15);
+  padding: 6px 8px;
+  border-radius: 30px;
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.wh-current { white-space: nowrap; padding: 0 6px; }
+.wh-btn {
+  border: none;
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: transparent;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s;
+}
+.wh-btn.active { background: #fff; color: #e85a1e; }
+
+.info-strip {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px;
+  background: #fff;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.info-strip .info-item { display: inline-flex; align-items: center; gap: 6px; }
+.info-strip strong { color: #1e293b; font-weight: 800; }
+.info-strip .sep { color: #cbd5e1; }
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(0,0,0,.05);
+  box-shadow: 0 4px 18px rgba(30,30,60,.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.card-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  gap: 10px;
+}
+.stat-value { font-size: 30px; font-weight: 800; color: #0f172a; }
+.stat-sub { font-size: 13px; color: #64748b; font-weight: 600; line-height: 1.35; }
+
+.selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.selector-btn {
+  padding: 12px 0;
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 10px;
+  font-weight: 800;
+  color: #334155;
+  cursor: pointer;
+  transition: all .2s;
+}
+.selector-btn.active {
+  background: #e85a1e;
+  border-color: #e85a1e;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(232,90,30,.25);
+}
+.small-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.chip-btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+}
+.chip-btn:hover { background: #fff; border-color: #ff6f32; color: #e85a1e; }
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+.mode-btn {
+  padding: 18px;
+  border: 2px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s;
+  color: #334155;
+}
+.mode-btn.active {
+  border-color: #e85a1e;
+  background: #fff3e0;
+  color: #e85a1e;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e85a1e, #ff8855);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(232,90,30,.28);
+  transition: all .2s;
+}
+.btn-primary:not(:disabled):hover { transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.btn-secondary {
+  padding: 18px 24px;
+  border: 1px solid #3a3d4e;
+  border-radius: 14px;
+  background: #2a2c38;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  transition: all .2s;
+}
+.btn-secondary:hover { background: #353847; }
+
+.scan-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #e4e5eb;
+  z-index: 1000;
+  padding: 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  flex-direction: column;
+  gap: 12px;
+}
+.scan-screen.active { display: flex; }
+
+.scan-header {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.05);
+}
+.btn-back-map {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #2a2c38;
+  color: #fff;
+  border: 1px solid #3a3d4e;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+.btn-back-map:hover { background: #353847; }
+.btn-back-map svg { width: 16px; height: 16px; stroke: #fff; stroke-width: 2.5; fill: none; }
+
+.scan-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.scan-badge {
+  background: #fff3e0;
+  color: #e85a1e;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 20px;
+}
+.scan-progress-box { flex: 1; min-width: 220px; }
+.scan-count {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+  margin-bottom: 6px;
+}
+.scan-progress { height: 10px; background: #f1f5f9; border-radius: 6px; overflow: hidden; }
+.scan-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #e85a1e, #ff8855);
+  transition: width .3s ease;
+}
+.scan-header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-scan {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-weight: 800;
+  cursor: pointer;
+  color: #334155;
+}
+.btn-finish {
+  background: #10b981;
+  color: #fff;
+  border: none;
+}
+
+.scan-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.scan-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.05);
+}
+.scan-display {
+  min-height: 64px;
+  border: 2px solid #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #0f172a;
+  cursor: pointer;
+  word-break: break-all;
+}
+.scan-display.empty,
+.qty-display.empty {
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+.scan-message { min-height: 24px; font-weight: 800; margin-top: 10px; }
+.success { color: #10b981; }
+.error { color: #ef4444; }
+.warning { color: #d97706; }
+.info { color: #3d5a9e; }
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 520px;
+  width: 100%;
+  margin: auto auto 0;
+  flex-shrink: 0;
+  padding-top: 8px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+}
+.key-btn {
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 28px;
+  font-weight: 900;
+  color: #0f172a;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+  transition: all .15s;
+}
+.key-btn:active { transform: scale(.97); }
+.key-action { background: #f1f5f9; font-size: 20px; }
+.key-enter {
+  background: linear-gradient(135deg, #e85a1e, #ff8855);
+  color: #fff;
+  border: none;
+}
+.key-enter-wide { grid-column: 1 / -1; height: 70px; }
+.keypad.mini { margin: 14px auto 0; }
+.keypad.mini .key-btn { height: 54px; font-size: 24px; }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity .3s ease, visibility .3s;
+  padding: 16px;
+}
+.modal-overlay.active { visibility: visible; opacity: 1; }
+.modal-card {
+  background: #fff;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+  transform: scale(.95) translateY(20px);
+  opacity: 0;
+  transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease;
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+}
+.modal-overlay.active .modal-card { transform: scale(1) translateY(0); opacity: 1; }
+.modal-card.wide { max-width: 860px; }
+.modal-header {
+  padding: 22px 26px;
+  background: #1e293b;
+  color: #fff;
+  position: relative;
+}
+.modal-header h2 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.modal-header p { font-size: 14px; opacity: .95; font-weight: 600; word-break: break-word; }
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,.2);
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.modal-close svg { width: 18px; height: 18px; fill: #fff; }
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.qty-item {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.qty-question {
+  font-size: 24px;
+  font-weight: 900;
+  text-align: center;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+.qty-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+.btn-yes,
+.btn-no,
+.btn-plain {
+  padding: 16px;
+  border-radius: 14px;
+  border: none;
+  font-weight: 900;
+  font-size: 18px;
+  cursor: pointer;
+}
+.btn-yes { background: #10b981; color: #fff; }
+.btn-no { background: #ef4444; color: #fff; }
+.btn-plain {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 15px;
+}
+.qty-display {
+  min-height: 58px;
+  border: 2px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 26px;
+  font-weight: 900;
+  margin: 14px 0 0;
+  word-break: break-all;
+}
+
+.table-wrapper {
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  max-height: 420px;
+  -webkit-overflow-scrolling: touch;
+}
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+th {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 10px 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: middle;
+}
+.list-table td { white-space: normal; min-width: 80px; }
+.empty-note {
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+  font-weight: 700;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  line-height: 1.4;
+}
+
+.report-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fff;
+}
+.report-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.report-name { font-weight: 900; color: #0f172a; word-break: break-all; }
+.report-meta { font-size: 12px; color: #64748b; font-weight: 700; line-height: 1.4; }
+.report-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.report-action {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-weight: 800;
+  cursor: pointer;
+}
+.report-action.danger { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+
+@media (max-width: 768px) {
+  .dashboard-container { padding: 10px; gap: 10px; }
+
+  .header { padding: 88px 12px 18px; border-radius: 14px; margin-bottom: 0; }
+  .header h1 { font-size: 22px; }
+  .header-icon { width: 48px; height: 48px; margin-bottom: 8px; }
+  .header-icon svg { width: 24px; height: 24px; }
+  .header-actions-right { top: 8px; right: 8px; }
+  .wh-selector { transform: scale(.88); transform-origin: right top; }
+
+  .back-btn { top: 10px; left: 10px; width: 40px; height: 40px; border-radius: 10px; }
+
+  .info-strip {
+    padding: 8px 12px;
+    font-size: 12px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+
+  .card { padding: 16px; border-radius: 14px; gap: 10px; }
+  .card-title { font-size: 16px; }
+  .stat-value { font-size: 26px; }
+
+  .selector-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+  .selector-btn { padding: 10px 0; font-size: 14px; border-radius: 9px; }
+
+  .mode-grid { grid-template-columns: 1fr; gap: 10px; }
+  .mode-btn { padding: 14px; border-radius: 12px; }
+
+  .small-actions { gap: 6px; }
+  .chip-btn { flex: 1; text-align: center; padding: 11px 10px; }
+
+  .btn-primary { width: 100%; padding: 16px; }
+  .action-row { grid-template-columns: 1fr; }
+  .btn-secondary { width: 100%; }
+
+  .scan-screen { padding: 8px; gap: 8px; }
+  .scan-header { padding: 10px; border-radius: 12px; gap: 10px; }
+  .btn-back-map { width: 100%; justify-content: center; }
+  .scan-badges { width: 100%; }
+  .scan-badge { flex: 1; text-align: center; }
+  .scan-progress-box { width: 100%; min-width: 0; }
+  .scan-header-btns { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn-scan { width: 100%; }
+  .btn-finish { grid-column: 1 / -1; }
+
+  .scan-body { gap: 10px; padding-bottom: 0; }
+  .scan-card { padding: 14px; border-radius: 12px; }
+  .scan-display { min-height: 58px; font-size: 26px; border-radius: 12px; }
+
+  .keypad { gap: 8px; max-width: 100%; }
+  .key-btn { height: 56px; border-radius: 12px; font-size: 24px; }
+  .key-enter-wide { height: 64px; }
+
+  .modal-overlay { padding: 10px; align-items: flex-end; }
+  .modal-card {
+    max-width: 100%;
+    max-height: 96vh;
+    border-radius: 18px 18px 0 0;
+  }
+  .modal-body { padding: 16px; }
+  .modal-header { padding: 18px; }
+  .modal-header h2 { font-size: 19px; }
+  .modal-header p { font-size: 13px; }
+
+  .qty-question { font-size: 20px; padding: 16px; }
+  .qty-actions { grid-template-columns: 1fr; }
+  .keypad.mini .key-btn { height: 50px; font-size: 22px; }
+  .keypad.mini .key-enter-wide { height: 58px; }
+  
+  .report-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .report-action { width: 100%; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<a href="http://okkam.space" class="back-btn" title="Главное меню">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="dashboard-container" id="setupView">
+  <header class="header">
+    <div class="header-actions-right">
+      <div class="wh-selector">
+        <span class="wh-current" id="whCurrent">Склад</span>
+        <button class="wh-btn active" id="whBtn12" onclick="setWh('12')">12</button>
+        <button class="wh-btn" id="whBtn11" onclick="setWh('11')">11</button>
+      </div>
+    </div>
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
+    </div>
+    <h1>Инвентаризация</h1>
+  </header>
+
+  <div class="info-strip">
+    <span class="info-item">📦 <strong>ostatok.xlsx</strong>: <span id="dataStatus">загрузка...</span></span>
+    <span class="sep">•</span>
+    <span class="info-item">🔧 Режим: <strong id="modeLabel">Простая проверка</strong></span>
+  </div>
+
+  <div class="card">
+    <div class="stat-header"><span>Выбрано контейнеров</span></div>
+    <div class="stat-value" id="selectedContainers">0</div>
+    <div class="stat-sub" id="selectedMeta">Ряды: — • Ярусы: —</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Выберите ряды</div>
+    <div class="small-actions">
+      <button class="chip-btn" onclick="selectAllRows()">Выбрать все</button>
+      <button class="chip-btn" onclick="clearRows()">Очистить</button>
+    </div>
+    <div class="selector-grid" id="rowsGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Выберите ярусы</div>
+    <div class="small-actions">
+      <button class="chip-btn" onclick="chooseAllLevels()">Все ярусы</button>
+      <button class="chip-btn" onclick="clearLevels()">Очистить</button>
+    </div>
+    <div class="selector-grid" id="levelsGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Режим проверки</div>
+    <div class="mode-grid">
+      <button class="mode-btn active" id="modeSimple" onclick="setMode('simple')">Простая проверка</button>
+      <button class="mode-btn" id="modeQty" onclick="setMode('qty')">Проверка с остатком</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="action-row">
+      <button class="btn-primary" id="startBtn" onclick="startInventory()" disabled>Начать инвентаризацию</button>
+      <button class="btn-secondary" onclick="openReportsModal()">Сохраненные файлы</button>
+    </div>
+  </div>
+</div>
+
+<div class="scan-screen" id="scanScreen">
+  <div class="scan-header">
+    <button class="btn-back-map" onclick="exitInventory()">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <span>Назад</span>
+    </button>
+
+    <div class="scan-badges">
+      <span class="scan-badge" id="scanWarehouse">Склад</span>
+      <span class="scan-badge" id="scanRows">Ряды</span>
+      <span class="scan-badge" id="scanLevels">Ярусы</span>
+      <span class="scan-badge" id="scanModeBadge">Режим</span>
+    </div>
+
+    <div class="scan-progress-box">
+      <div class="scan-count">
+        <span id="scanCount">0 / 0</span>
+        <span id="scanPercent">0%</span>
+      </div>
+      <div class="scan-progress"><div class="scan-bar" id="scanBar"></div></div>
+    </div>
+
+    <div class="scan-header-btns">
+      <button class="btn-scan" onclick="openMissingList()">Пропущено: <span id="missingBadge">0</span></button>
+      <button class="btn-scan" onclick="openNotFoundList()">Не найдено: <span id="notFoundBadge">0</span></button>
+      <button class="btn-scan btn-finish" onclick="finishInventory()">Завершить</button>
+    </div>
+  </div>
+
+  <div class="scan-body">
+    <div class="scan-card">
+      <div class="card-title">Сканирование контейнера</div>
+      <div class="scan-display empty" id="scanDisplay" onclick="setMessage('Используйте цифровую клавиатуру или сканер', 'info')">Введите номер контейнера</div>
+      <div class="scan-message info" id="scanMessage">Начните сканирование контейнеров</div>
+    </div>
+
+    <div class="keypad">
+      <button class="key-btn" onclick="pressScan('1')">1</button>
+      <button class="key-btn" onclick="pressScan('2')">2</button>
+      <button class="key-btn" onclick="pressScan('3')">3</button>
+      <button class="key-btn" onclick="pressScan('4')">4</button>
+      <button class="key-btn" onclick="pressScan('5')">5</button>
+      <button class="key-btn" onclick="pressScan('6')">6</button>
+      <button class="key-btn" onclick="pressScan('7')">7</button>
+      <button class="key-btn" onclick="pressScan('8')">8</button>
+      <button class="key-btn" onclick="pressScan('9')">9</button>
+      <button class="key-btn key-action" onclick="pressScan('clear')">C</button>
+      <button class="key-btn" onclick="pressScan('0')">0</button>
+      <button class="key-btn key-action" onclick="pressScan('back')">⌫</button>
+      <button class="key-btn key-enter key-enter-wide" onclick="pressScan('enter')">Подтвердить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="qtyModal" onclick="if(event.target === this) cancelQtyInput()">
+  <div class="modal-card">
+    <div class="modal-header" style="background:#e85a1e;">
+      <button class="modal-close" onclick="cancelQtyInput()">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h2 id="qtyTitle">Подтверждение количества</h2>
+      <p id="qtySub"></p>
+    </div>
+    <div class="modal-body">
+      <div id="qtyConfirmBlock">
+        <div class="qty-item" id="qtyItem"></div>
+        <div class="qty-question" id="qtyQuestion"></div>
+        <div class="qty-actions">
+          <button class="btn-yes" onclick="answerQtyYes()">Да</button>
+          <button class="btn-no" onclick="answerQtyNo()">Нет</button>
+        </div>
+      </div>
+
+      <div id="qtyInputBlock" class="hidden">
+        <div class="qty-item">Введите фактическое количество упаковок</div>
+        <div class="qty-display empty" id="qtyDisplay">Введите количество</div>
+
+        <div class="keypad mini">
+          <button class="key-btn" onclick="pressQty('1')">1</button>
+          <button class="key-btn" onclick="pressQty('2')">2</button>
+          <button class="key-btn" onclick="pressQty('3')">3</button>
+          <button class="key-btn" onclick="pressQty('4')">4</button>
+          <button class="key-btn" onclick="pressQty('5')">5</button>
+          <button class="key-btn" onclick="pressQty('6')">6</button>
+          <button class="key-btn" onclick="pressQty('7')">7</button>
+          <button class="key-btn" onclick="pressQty('8')">8</button>
+          <button class="key-btn" onclick="pressQty('9')">9</button>
+          <button class="key-btn key-action" onclick="pressQty('clear')">C</button>
+          <button class="key-btn" onclick="pressQty('0')">0</button>
+          <button class="key-btn key-action" onclick="pressQty('back')">⌫</button>
+          <button class="key-btn key-enter key-enter-wide" onclick="pressQty('enter')">Сохранить</button>
+        </div>
+
+        <div class="qty-actions">
+          <button class="btn-plain" onclick="saveQtyInput()">Сохранить</button>
+          <button class="btn-plain" onclick="cancelQtyInput()">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="listModal" onclick="if(event.target === this) closeListModal()">
+  <div class="modal-card wide">
+    <div class="modal-header">
+      <button class="modal-close" onclick="closeListModal()">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h2 id="listTitle">Список</h2>
+      <p id="listSub"></p>
+    </div>
+    <div class="modal-body" id="listBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reportsModal" onclick="if(event.target === this) closeReportsModal()">
+  <div class="modal-card wide">
+    <div class="modal-header" style="background:#2a2c38;">
+      <button class="modal-close" onclick="closeReportsModal()">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h2>Сохраненные файлы</h2>
+      <p>Отчеты хранятся на сервере</p>
+    </div>
+    <div class="modal-body" id="reportsList"></div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+let G = {
+  data: { '12': {}, '11': {} },
+  allItems: [],
+  containers: {},
+  activeWh: '12',
+  fileDate: ''
+};
+
+const WH_ROWS = { '12': 20, '11': 24 };
+const LEVELS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+let SEL = {
+  '12': { rows: new Set(), levels: new Set(LEVELS), mode: 'simple' },
+  '11': { rows: new Set(), levels: new Set(LEVELS), mode: 'simple' }
+};
+
+let INV = null;
+
+function $(id) { return document.getElementById(id); }
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function normalizeQty(n) { return Math.round((Number(n) || 0) * 1000) / 1000; }
+
+function parseNum(v) {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'number') return normalizeQty(v);
+  let s = String(v).replace(/\s/g, '').replace(',', '.');
+  let n = parseFloat(s);
+  return isNaN(n) ? 0 : normalizeQty(n);
+}
+
+function formatQty(n) {
+  let x = Number(n) || 0;
+  return Number.isInteger(x) ? String(x) : x.toFixed(2).replace('.', ',');
+}
+
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function processWB(wb, lastModifiedDate) {
+  let sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) throw new Error('Лист пуст');
+
+  let rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+  G.data = { '12': {}, '11': {} };
+  G.allItems = [];
+  G.containers = {};
+
+  const ID_REGEX = /^(12|Z)-(\d{3})-(\d{3})([A-F])$/i;
+
+  rows.forEach(function(row) {
+    if (!row || row.length < 5) return;
+
+    let cellId = String(row[0] || '').trim();
+    let match = cellId.match(ID_REGEX);
+    if (!match) return;
+
+    let wh = (match[1].toUpperCase() === '12') ? '12' : '11';
+    let r = parseInt(match[2], 10);
+    let c = parseInt(match[3], 10);
+    let l = match[4].toUpperCase();
+
+    if (!G.data[wh][r]) G.data[wh][r] = {};
+    if (!G.data[wh][r][c]) G.data[wh][r][c] = {};
+    if (!G.data[wh][r][c][l]) G.data[wh][r][c][l] = [];
+
+    let item = {
+      wh: wh,
+      cellId: cellId,
+      r: r,
+      c: c,
+      l: l,
+      container: String(row[1] || '').trim(),
+      article: String(row[3] || '').trim(),
+      name: String(row[4] || '').trim(),
+      packsCount: parseNum(row[13]),
+      piecesCount: parseNum(row[16])
+    };
+
+    G.data[wh][r][c][l].push(item);
+    G.allItems.push(item);
+
+    if (item.container) {
+      if (!G.containers[item.container]) G.containers[item.container] = [];
+      G.containers[item.container].push(item);
+    }
+  });
+
+  G.fileDate = lastModifiedDate;
+  $('dataStatus').textContent = lastModifiedDate;
+  renderSelectors();
+  updateSetupStats();
+}
+
+function setWh(wh) {
+  G.activeWh = wh;
+  $('whCurrent').textContent = 'Склад';
+  $('whBtn12').classList.toggle('active', wh === '12');
+  $('whBtn11').classList.toggle('active', wh === '11');
+  renderSelectors();
+  updateSetupStats();
+}
+
+function renderSelectors() {
+  renderRows();
+  renderLevels();
+  renderMode();
+}
+
+function renderRows() {
+  let box = $('rowsGrid');
+  box.innerHTML = '';
+  let sel = SEL[G.activeWh];
+
+  for (let r = 1; r <= WH_ROWS[G.activeWh]; r++) {
+    let b = document.createElement('button');
+    b.className = 'selector-btn' + (sel.rows.has(r) ? ' active' : '');
+    b.textContent = r;
+    b.onclick = function() { toggleRow(r); };
+    box.appendChild(b);
+  }
+}
+
+function renderLevels() {
+  let box = $('levelsGrid');
+  box.innerHTML = '';
+  let sel = SEL[G.activeWh];
+
+  LEVELS.forEach(function(l) {
+    let b = document.createElement('button');
+    b.className = 'selector-btn' + (sel.levels.has(l) ? ' active' : '');
+    b.textContent = l;
+    b.onclick = function() { toggleLevel(l); };
+    box.appendChild(b);
+  });
+}
+
+function renderMode() {
+  let sel = SEL[G.activeWh];
+  $('modeSimple').classList.toggle('active', sel.mode === 'simple');
+  $('modeQty').classList.toggle('active', sel.mode === 'qty');
+}
+
+function toggleRow(r) {
+  let set = SEL[G.activeWh].rows;
+  if (set.has(r)) set.delete(r);
+  else set.add(r);
+  renderRows();
+  updateSetupStats();
+}
+
+function selectAllRows() {
+  SEL[G.activeWh].rows = new Set(Array.from({ length: WH_ROWS[G.activeWh] }, function(_, i) { return i + 1; }));
+  renderRows();
+  updateSetupStats();
+}
+
+function clearRows() {
+  SEL[G.activeWh].rows.clear();
+  renderRows();
+  updateSetupStats();
+}
+
+function toggleLevel(l) {
+  let set = SEL[G.activeWh].levels;
+  if (set.has(l)) set.delete(l);
+  else set.add(l);
+  renderLevels();
+  updateSetupStats();
+}
+
+function chooseAllLevels() {
+  SEL[G.activeWh].levels = new Set(LEVELS);
+  renderLevels();
+  updateSetupStats();
+}
+
+function clearLevels() {
+  SEL[G.activeWh].levels.clear();
+  renderLevels();
+  updateSetupStats();
+}
+
+function setMode(mode) {
+  SEL[G.activeWh].mode = mode;
+  renderMode();
+  updateSetupStats();
+}
+
+function getSelectedRowsArr() {
+  return Array.from(SEL[G.activeWh].rows).sort(function(a, b) { return a - b; });
+}
+
+function getSelectedLevelsArr() {
+  return LEVELS.filter(function(l) { return SEL[G.activeWh].levels.has(l); });
+}
+
+function updateSetupStats() {
+  let wh = G.activeWh;
+  let rows = getSelectedRowsArr();
+  let levels = getSelectedLevelsArr();
+  let expected = getExpectedContainers(wh, rows, levels);
+
+  $('selectedContainers').textContent = expected.size;
+  $('selectedMeta').textContent =
+    'Ряды: ' + (rows.length ? compactRanges(rows) : '—') +
+    ' • Ярусы: ' + (levels.length ? (levels.length === 6 ? 'все' : levels.join(',')) : '—');
+
+  $('modeLabel').textContent = SEL[wh].mode === 'simple' ? 'Простая проверка' : 'Проверка с остатком';
+
+  $('startBtn').disabled = rows.length === 0 || levels.length === 0 || expected.size === 0;
+}
+
+function getExpectedContainers(wh, rowsArr, levelsArr) {
+  let map = new Map();
+
+  rowsArr.forEach(function(r) {
+    let rowData = G.data[wh][r] || {};
+
+    Object.keys(rowData).forEach(function(cKey) {
+      let colData = rowData[cKey];
+
+      levelsArr.forEach(function(l) {
+        let items = colData[l] || [];
+
+        items.forEach(function(item) {
+          if (!item.container) return;
+
+          let entry = map.get(item.container);
+          if (!entry) {
+            entry = {
+              container: item.container,
+              wh: wh,
+              cells: [],
+              names: [],
+              articles: [],
+              systemPacks: 0
+            };
+            map.set(item.container, entry);
+          }
+
+          if (entry.cells.indexOf(item.cellId) === -1) entry.cells.push(item.cellId);
+          if (item.name && entry.names.indexOf(item.name) === -1) entry.names.push(item.name);
+          if (item.article && entry.articles.indexOf(item.article) === -1) entry.articles.push(item.article);
+
+          entry.systemPacks = normalizeQty(entry.systemPacks + item.packsCount);
+        });
+      });
+    });
+  });
+
+  return map;
+}
+
+function compactRanges(arr) {
+  if (!arr.length) return '';
+  let sorted = Array.from(arr).sort(function(a, b) { return a - b; });
+  let parts = [];
+  let start = sorted[0];
+  let prev = sorted[0];
+
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === prev + 1) {
+      prev = sorted[i];
+    } else {
+      parts.push(start === prev ? String(start) : start + '-' + prev);
+      start = sorted[i];
+      prev = sorted[i];
+    }
+  }
+
+  parts.push(start === prev ? String(start) : start + '-' + prev);
+  return parts.join(',');
+}
+
+function buildReportName(wh, rows, levels) {
+  let dt = new Date();
+  let date = pad(dt.getDate()) + '.' + pad(dt.getMonth() + 1) + '.' + dt.getFullYear();
+  let time = pad(dt.getHours()) + '-' + pad(dt.getMinutes()) + '-' + pad(dt.getSeconds());
+  let levelsPart = levels.length === 6 ? '' : '_ярус_' + levels.join('-');
+  return 'Склад' + wh + '_ряды_' + compactRanges(rows) + levelsPart + '_' + date + '_' + time + '.xlsx';
+}
+
+function startInventory() {
+  let wh = G.activeWh;
+  let rows = getSelectedRowsArr();
+  let levels = getSelectedLevelsArr();
+  let expected = getExpectedContainers(wh, rows, levels);
+
+  if (!expected.size) return;
+
+  INV = {
+    wh: wh,
+    rows: rows,
+    levels: levels,
+    mode: SEL[wh].mode,
+    expected: expected,
+    scanned: new Set(),
+    results: new Map(),
+    notFound: [],
+    scanValue: '',
+    qtyValue: '',
+    awaitingContainer: null,
+    startedAt: new Date()
+  };
+
+  $('setupView').classList.add('hidden');
+  $('scanScreen').classList.add('active');
+  document.body.classList.add('scan-mode');
+
+  renderScanHeader();
+  updateScanProgress();
+  renderScanDisplay();
+  setMessage('Начните сканирование контейнеров', 'info');
+}
+
+function exitInventory() {
+  if (INV) {
+    if (INV.scanned.size === INV.expected.size && INV.expected.size > 0) {
+      if (!confirm('Все контейнеры отсканированы, но отчет не сформирован. Выйти без отчета?')) return;
+    } else if (INV.scanned.size > 0 || INV.notFound.length > 0) {
+      if (!confirm('Инвентаризация не завершена. Выйти без формирования отчета?')) return;
+    }
+  }
+  endSession();
+}
+
+function endSession() {
+  $('scanScreen').classList.remove('active');
+  $('setupView').classList.remove('hidden');
+  document.body.classList.remove('scan-mode');
+  INV = null;
+}
+
+function renderScanHeader() {
+  $('scanWarehouse').textContent = 'Склад ' + INV.wh;
+  $('scanRows').textContent = 'Ряды ' + compactRanges(INV.rows);
+  $('scanLevels').textContent = INV.levels.length === 6 ? 'Все ярусы' : 'Ярусы ' + INV.levels.join(',');
+  $('scanModeBadge').textContent = INV.mode === 'simple' ? 'Простая' : 'С остатком';
+}
+
+function updateScanProgress() {
+  if (!INV) return;
+  let total = INV.expected.size;
+  let done = INV.scanned.size;
+  let pct = total ? Math.round((done / total) * 100) : 0;
+
+  $('scanCount').textContent = done + ' / ' + total;
+  $('scanPercent').textContent = pct + '%';
+  $('scanBar').style.width = pct + '%';
+  $('missingBadge').textContent = String(total - done);
+  $('notFoundBadge').textContent = String(INV.notFound.length);
+}
+
+function renderScanDisplay() {
+  let el = $('scanDisplay');
+  if (INV.scanValue) {
+    el.textContent = INV.scanValue;
+    el.classList.remove('empty');
+  } else {
+    el.textContent = 'Введите номер контейнера';
+    el.classList.add('empty');
+  }
+}
+
+function setMessage(text, type) {
+  let el = $('scanMessage');
+  el.textContent = text;
+  el.className = 'scan-message ' + type;
+}
+
+function pressScan(key) {
+  if (!INV) return;
+
+  if (key === 'enter') {
+    submitScan();
+    return;
+  }
+
+  if (key === 'back') {
+    INV.scanValue = INV.scanValue.slice(0, -1);
+  } else if (key === 'clear') {
+    INV.scanValue = '';
+  } else if (/^[0-9]$/.test(key) && INV.scanValue.length < 40) {
+    INV.scanValue += key;
+  }
+
+  renderScanDisplay();
+}
+
+function submitScan() {
+  if (!INV) return;
+
+  let value = INV.scanValue.trim();
+  INV.scanValue = '';
+  renderScanDisplay();
+
+  if (!value) return;
+
+  if (INV.expected.has(value)) {
+    if (INV.scanned.has(value)) {
+      setMessage('Контейнер ' + value + ' уже отсканирован', 'warning');
+      vibrate([60]);
+      return;
+    }
+
+    if (INV.mode === 'simple') {
+      markScanned(value, '', 'OK');
+      vibrate(30);
+    } else {
+      openQtyConfirm(value);
+    }
+  } else {
+    handleNotFound(value);
+  }
+}
+
+function handleNotFound(container) {
+  let locations = Array.from(new Set((G.containers[container] || []).map(function(it) { return it.cellId; })));
+  let reason = locations.length ? 'wrong' : 'unknown';
+  let location = locations.join(', ');
+
+  INV.notFound.push({
+    container: container,
+    reason: reason,
+    location: location,
+    time: new Date().toLocaleTimeString('ru-RU')
+  });
+
+  updateScanProgress();
+
+  if (locations.length) {
+    setMessage('Контейнер должен находиться в ячейке: ' + location, 'error');
+  } else {
+    setMessage('Контейнер не найден в системе', 'error');
+  }
+
+  vibrate([80, 40, 80]);
+}
+
+function markScanned(container, actual, status) {
+  INV.scanned.add(container);
+  INV.results.set(container, {
+    actual: actual,
+    status: status,
+    time: new Date().toLocaleTimeString('ru-RU')
+  });
+
+  updateScanProgress();
+
+  if (INV.scanned.size === INV.expected.size) {
+    setMessage('Все контейнеры отсканированы', 'success');
+    vibrate([30, 30, 30]);
+  } else {
+    setMessage('Контейнер ' + container + ' подтвержден', 'success');
+  }
+}
+
+function openQtyConfirm(container) {
+  INV.awaitingContainer = container;
+  INV.qtyValue = '';
+
+  let entry = INV.expected.get(container);
+
+  $('qtyTitle').textContent = 'Контейнер ' + container;
+  $('qtySub').textContent = 'Ячейка: ' + entry.cells.join(', ');
+  $('qtyItem').textContent = entry.names.join('; ') || 'Номенклатура не указана';
+  $('qtyQuestion').textContent = 'В контейнере ' + formatQty(entry.systemPacks) + ' упаковок?';
+
+  $('qtyConfirmBlock').classList.remove('hidden');
+  $('qtyInputBlock').classList.add('hidden');
+  $('qtyModal').classList.add('active');
+}
+
+function answerQtyYes() {
+  if (!INV || !INV.awaitingContainer) return;
+  let container = INV.awaitingContainer;
+  let entry = INV.expected.get(container);
+  closeQtyModal();
+  markScanned(container, entry.systemPacks, 'OK');
+  vibrate(30);
+}
+
+function answerQtyNo() {
+  if (!INV) return;
+  INV.qtyValue = '';
+  renderQtyDisplay();
+  $('qtyConfirmBlock').classList.add('hidden');
+  $('qtyInputBlock').classList.remove('hidden');
+}
+
+function pressQty(key) {
+  if (!INV) return;
+
+  if (key === 'enter') {
+    saveQtyInput();
+    return;
+  }
+
+  if (key === 'back') {
+    INV.qtyValue = INV.qtyValue.slice(0, -1);
+  } else if (key === 'clear') {
+    INV.qtyValue = '';
+  } else if (/^[0-9]$/.test(key) && INV.qtyValue.length < 10) {
+    INV.qtyValue += key;
+  }
+
+  renderQtyDisplay();
+}
+
+function renderQtyDisplay() {
+  let el = $('qtyDisplay');
+  if (!INV) return;
+
+  if (INV.qtyValue) {
+    el.textContent = INV.qtyValue;
+    el.classList.remove('empty');
+  } else {
+    el.textContent = 'Введите количество';
+    el.classList.add('empty');
+  }
+}
+
+function saveQtyInput() {
+  if (!INV || !INV.awaitingContainer) return;
+
+  if (INV.qtyValue === '') {
+    setMessage('Введите фактическое количество', 'warning');
+    return;
+  }
+
+  let actual = normalizeQty(parseFloat(INV.qtyValue));
+  let container = INV.awaitingContainer;
+  let entry = INV.expected.get(container);
+  let status = actual === entry.systemPacks ? 'OK' : 'DIFF';
+
+  closeQtyModal();
+  markScanned(container, actual, status);
+
+  if (status === 'DIFF') {
+    setMessage('Расхождение: системно ' + formatQty(entry.systemPacks) + ', введено ' + formatQty(actual), 'warning');
+    vibrate([70, 30, 70]);
+  }
+}
+
+function cancelQtyInput() {
+  closeQtyModal();
+  if (INV) setMessage('Подтверждение отменено, контейнер не засчитан', 'info');
+}
+
+function closeQtyModal() {
+  $('qtyModal').classList.remove('active');
+  if (INV) {
+    INV.awaitingContainer = null;
+    INV.qtyValue = '';
+  }
+}
+
+function openMissingList() {
+  if (!INV) return;
+
+  let rows = [];
+  INV.expected.forEach(function(entry, container) {
+    if (!INV.scanned.has(container)) rows.push(entry);
+  });
+
+  let html = '';
+
+  if (!rows.length) {
+    html = '<div class="empty-note">Все контейнеры отсканированы</div>';
+  } else {
+    html += '<div class="table-wrapper"><table class="list-table"><thead><tr><th>Контейнер</th><th>Ячейка</th><th>Номенклатура</th><th>Кол-во уп.</th></tr></thead><tbody>';
+
+    rows.forEach(function(entry) {
+      html += '<tr>';
+      html += '<td><strong>' + entry.container + '</strong></td>';
+      html += '<td>' + entry.cells.join(', ') + '</td>';
+      html += '<td>' + (entry.names.join('; ') || '—') + '</td>';
+      html += '<td>' + formatQty(entry.systemPacks) + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+  }
+
+  showListModal('Пропущенные контейнеры', 'Количество: ' + rows.length, html);
+}
+
+function openNotFoundList() {
+  if (!INV) return;
+
+  let html = '';
+
+  if (!INV.notFound.length) {
+    html = '<div class="empty-note">Не найденных контейнеров нет</div>';
+  } else {
+    html += '<div class="table-wrapper"><table class="list-table"><thead><tr><th>Контейнер</th><th>Статус</th><th>Системная ячейка</th><th>Время</th></tr></thead><tbody>';
+
+    INV.notFound.forEach(function(item) {
+      html += '<tr>';
+      html += '<td><strong>' + item.container + '</strong></td>';
+      html += '<td>' + (item.reason === 'wrong' ? 'Найден в другой ячейке' : 'Не найден в системе') + '</td>';
+      html += '<td>' + (item.location || '—') + '</td>';
+      html += '<td>' + item.time + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+  }
+
+  showListModal('Не найденные контейнеры', 'Количество: ' + INV.notFound.length, html);
+}
+
+function showListModal(title, sub, html) {
+  $('listTitle').textContent = title;
+  $('listSub').textContent = sub;
+  $('listBody').innerHTML = html;
+  $('listModal').classList.add('active');
+}
+
+function closeListModal() {
+  $('listModal').classList.remove('active');
+}
+
+async function finishInventory() {
+  if (!INV) return;
+
+  let missing = INV.expected.size - INV.scanned.size;
+
+  if (missing > 0) {
+    if (!confirm('Пропущено контейнеров: ' + missing + '. Завершить и сформировать отчет?')) return;
+  }
+
+  let report = createReport();
+  let saved = await saveReportToServer(report);
+  
+  if (!saved) {
+    downloadReport(report);
+    setMessage('Отчет скачан локально (ошибка сохранения на сервер)', 'warning');
+  } else {
+    setMessage('Отчет сохранен на сервер: ' + report.name, 'success');
+  }
+
+  endSession();
+  setTimeout(function() {
+    openReportsModal();
+  }, 500);
+}
+
+function createReport() {
+  let rowsLabel = compactRanges(INV.rows);
+  let levelsLabel = INV.levels.length === 6 ? 'все' : INV.levels.join(',');
+  let fileName = buildReportName(INV.wh, INV.rows, INV.levels);
+  let now = new Date();
+
+  let summary = [
+    ['Склад', INV.wh],
+    ['Ряды', rowsLabel],
+    ['Ярусы', levelsLabel],
+    ['Режим', INV.mode === 'simple' ? 'Простая проверка' : 'Проверка с остатком'],
+    ['Дата и время', now.toLocaleString('ru-RU')],
+    ['Всего контейнеров', INV.expected.size],
+    ['Отсканировано', INV.scanned.size],
+    ['Пропущено', INV.expected.size - INV.scanned.size],
+    ['Не найдено', INV.notFound.length]
+  ];
+
+  let resultRows = [];
+
+  INV.expected.forEach(function(entry, container) {
+    let res = INV.results.get(container);
+    let scanned = INV.scanned.has(container);
+
+    let status = scanned
+      ? (res.status === 'OK' ? 'Совпадает' : 'Расхождение')
+      : 'Пропущен';
+
+    let actual = '';
+    let deviation = '';
+
+    if (scanned && INV.mode === 'qty') {
+      actual = res.actual;
+      deviation = normalizeQty(res.actual - entry.systemPacks);
+    }
+
+    resultRows.push({
+      'Контейнер': container,
+      'Статус': status,
+      'Ожидаемая ячейка': entry.cells.join(', '),
+      'Номенклатура': entry.names.join('; '),
+      'Артикул': entry.articles.join('; '),
+      'Системное количество упаковок': entry.systemPacks,
+      'Фактическое количество упаковок': actual,
+      'Отклонение': deviation
+    });
+  });
+
+  let notFoundRows = INV.notFound.map(function(item) {
+    return {
+      'Контейнер': item.container,
+      'Статус': item.reason === 'wrong' ? 'Найден в другой ячейке' : 'Не найден в системе',
+      'Системная ячейка': item.location,
+      'Время': item.time
+    };
+  });
+
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Итог');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resultRows), 'Результат');
+
+  if (notFoundRows.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(notFoundRows), 'Не найдено');
+  }
+
+  let array = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  let blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  return {
+    name: fileName,
+    blob: blob,
+    base64: XLSX.write(wb, { bookType: 'xlsx', type: 'base64' })
+  };
+}
+
+async function saveReportToServer(report) {
+  try {
+    let response = await fetch('save_report.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: report.name,
+        data: report.base64
+      })
+    });
+
+    if (!response.ok) throw new Error('Server error');
+    let result = await response.json();
+    return result.success === true;
+  } catch (e) {
+    console.error('Save error:', e);
+    return false;
+  }
+}
+
+function downloadReport(report) {
+  if (!report.blob) return;
+  let url = URL.createObjectURL(report.blob);
+  let a = document.createElement('a');
+  a.href = url;
+  a.download = report.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() {
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
+async function openReportsModal() {
+  await renderReports();
+  $('reportsModal').classList.add('active');
+}
+
+async function renderReports() {
+  let box = $('reportsList');
+  let html = '<div class="empty-note">Загрузка списка файлов...</div>';
+  box.innerHTML = html;
+
+  try {
+    let response = await fetch('list_reports.php');
+    if (!response.ok) throw new Error('Failed to load');
+    let files = await response.json();
+
+    if (!files.length) {
+      html = '<div class="empty-note">Сохраненных файлов нет</div>';
+    } else {
+      html = '';
+      files.forEach(function(f) {
+        let dt = new Date(f.lastModified * 1000).toLocaleString('ru-RU');
+        let sizeKb = Math.max(1, Math.round(f.size / 1024));
+        let encoded = encodeURIComponent(f.name);
+
+        html += '<div class="report-item">';
+        html += '<div class="report-top">';
+        html += '<div class="report-name">' + f.name + '</div>';
+        html += '<div class="report-meta">' + dt + '</div>';
+        html += '</div>';
+        html += '<div class="report-meta">Размер: ' + sizeKb + ' КБ</div>';
+        html += '<div class="report-actions">';
+        html += '<button class="report-action" onclick="downloadSavedReport(\'' + encoded + '\')">Скачать</button>';
+        html += '<button class="report-action danger" onclick="deleteSavedReport(\'' + encoded + '\')">Удалить</button>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+  } catch (e) {
+    html = '<div class="empty-note">Ошибка загрузки списка файлов</div>';
+  }
+
+  box.innerHTML = html;
+}
+
+function downloadSavedReport(encodedName) {
+  let name = decodeURIComponent(encodedName);
+  let a = document.createElement('a');
+  a.href = name;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function deleteSavedReport(encodedName) {
+  if (!confirm('Удалить файл?')) return;
+
+  let name = decodeURIComponent(encodedName);
+
+  try {
+    let response = await fetch('delete_report.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name })
+    });
+
+    if (!response.ok) throw new Error('Failed to delete');
+    let result = await response.json();
+
+    if (result.success) {
+      await renderReports();
+    } else {
+      alert('Ошибка удаления файла');
+    }
+  } catch (e) {
+    alert('Ошибка удаления файла');
+  }
+}
+
+function closeReportsModal() {
+  $('reportsModal').classList.remove('active');
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  if ($('qtyModal').classList.contains('active')) {
+    if ($('qtyInputBlock').classList.contains('hidden')) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        answerQtyYes();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelQtyInput();
+      }
+    } else {
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        pressQty(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        pressQty('back');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        pressQty('enter');
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelQtyInput();
+      }
+    }
+    return;
+  }
+
+  if ($('listModal').classList.contains('active')) {
+    if (e.key === 'Escape') closeListModal();
+    return;
+  }
+
+  if ($('reportsModal').classList.contains('active')) {
+    if (e.key === 'Escape') closeReportsModal();
+    return;
+  }
+
+  if ($('scanScreen').classList.contains('active')) {
+    if (/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      pressScan(e.key);
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      pressScan('back');
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      pressScan('enter');
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      exitInventory();
+    }
+  }
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+  setWh('12');
+
+  fetch('ostatok.xlsx')
+    .then(function(res) {
+      if (!res.ok) throw new Error('Файл не найден');
+      let lastMod = res.headers.get('Last-Modified');
+      let dateStr = lastMod ? new Date(lastMod).toLocaleString('ru-RU') : new Date().toLocaleDateString('ru-RU');
+      return res.arrayBuffer().then(function(ab) { return { ab: ab, dateStr: dateStr }; });
+    })
+    .then(function(payload) {
+      let wb = XLSX.read(payload.ab, { type: 'array' });
+      processWB(wb, payload.dateStr);
+    })
+    .catch(function(err) {
+      console.log('Ошибка:', err);
+      $('dataStatus').textContent = 'ошибка загрузки';
+      $('dataStatus').style.color = '#ef4444';
+    });
+});
+</script>
+</body>
+</html>

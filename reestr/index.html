@@ -1,0 +1,2208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#e85a1e">
+<title>Реестры отгрузок — Kiberbul'ka</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+<style>
+@page { size: A4 landscape; margin: 6mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-y: scroll; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.06); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(61,90,158,.35); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(61,90,158,.55); }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e4e5eb; padding: 20px; color: #2a2a3a; -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+input, textarea { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+.container { max-width: 1200px; margin: 0 auto; }
+.back-btn { position: fixed; top: 20px; left: 20px; width: 46px; height: 46px; border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 7px 9px 20px rgba(30,30,60,.16); transition: all .25s; z-index: 1000; text-decoration: none; }
+.back-btn:hover { background: rgba(61,90,158,.08); transform: translateY(-2px); box-shadow: 9px 12px 26px rgba(30,30,60,.22); }
+.back-btn svg { width: 22px; height: 22px; fill: #3d5a9e; }
+.header { text-align: center; margin-bottom: 24px; padding: 32px 20px; background: linear-gradient(135deg, #e85a1e, #ff6f32 50%, #ff8855); border-radius: 16px; box-shadow: 8px 12px 28px rgba(200,70,20,.35); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.header-icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; background: rgba(255,255,255,.15); margin-bottom: 12px; border: 1px solid rgba(255,255,255,.2); opacity: 0; transform: scale(.5); transition: opacity .8s ease, transform .8s cubic-bezier(.34,1.56,.64,1); }
+.header-icon.visible { opacity: 1; transform: scale(1); animation: floatGlow 3s ease-in-out infinite; }
+.header-icon svg { width: 30px; height: 30px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes floatGlow { 0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 rgba(255,255,255,0); } 50% { transform: translateY(-3px) scale(1.03); box-shadow: 0 6px 15px rgba(255,255,255,0.25); } }
+.header h1 { font-size: 25px; color: #fff; font-weight: 700; }
+.header-subtitle { margin-top: 8px; font-size: 15px; font-weight: 600; color: rgba(255,255,255,.92); }
+.card { background: #f5f5fa; border-radius: 16px; padding: 28px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,.06); box-shadow: 10px 14px 36px rgba(30,30,60,.18); }
+.fg { margin-bottom: 20px; }
+.fg label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; color: #555570; text-transform: uppercase; }
+.fg input[type="text"] { width: 100%; max-width: 300px; padding: 12px 16px; border: 1px solid rgba(0,0,0,.1); border-radius: 10px; font-size: 16px; background: #dfe0e8; color: #1a1a2e; }
+.fg input:focus, .fg textarea:focus { outline: none; border-color: #3d5a9e; background: #d8d9e4; }
+.date-note { margin-top: 6px; font-size: 12px; color: #6c6c80; }
+#dataInput { width: 100%; height: 140px; padding: 14px 16px; border: 1px solid rgba(0,0,0,.1); border-radius: 10px; font-size: 14px; background: #dfe0e8; color: #1a1a2e; resize: vertical; font-family: 'Courier New', Courier, monospace; line-height: 1.4; white-space: pre-wrap; overflow-x: hidden; overflow-y: auto; }
+#dataInput::placeholder { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; color: #6c6c80; }
+#dataInput.dragover { background: #d8d9e4; border-color: #e85a1e; border-style: solid; box-shadow: 0 0 10px rgba(232,90,30,.3); }
+.actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.btn-print { padding: 14px 28px; font-size: 17px; font-weight: 700; background: linear-gradient(135deg, #2c6e49, #3a8f5c); color: #fff; border: none; border-radius: 12px; cursor: pointer; box-shadow: 6px 8px 20px rgba(44,110,73,.3); transition: all .25s; text-transform: uppercase; letter-spacing: .5px; display: inline-flex; align-items: center; gap: 8px; }
+.btn-print:hover { transform: translateY(-2px); box-shadow: 8px 10px 24px rgba(44,110,73,.4); }
+.btn-file { padding: 14px 28px; font-size: 17px; font-weight: 700; background: linear-gradient(135deg, #e85a1e, #ff6f32); color: #fff; border: none; border-radius: 12px; cursor: pointer; box-shadow: 6px 8px 20px rgba(232,90,30,.3); transition: all .25s; text-transform: uppercase; letter-spacing: .5px; display: inline-flex; align-items: center; gap: 8px; }
+.btn-file:hover { transform: translateY(-2px); box-shadow: 8px 10px 24px rgba(232,90,30,.4); }
+.efko-status { margin-top: 15px; font-size: 14px; font-weight: 600; color: #2c6e49; text-align: center; min-height: 20px; }
+.registry-output { display: none; background: #fff; padding: 0 20px 20px 20px; border-radius: 16px; box-shadow: 10px 14px 36px rgba(30,30,60,.18); margin-top: 20px; overflow: hidden; width: 100%; }
+.registry-output.visible { display: block; }
+.registry-header-row { display: flex; align-items: center; justify-content: space-between; position: relative; padding-top: 0; margin-bottom: 16px; }
+.table-brand { font-size: 27px; font-weight: 800; color: #2a2a3a; letter-spacing: .5px; }
+.registry-title { font-size: 18px; font-weight: bold; color: #2a2a3a; text-align: center; position: absolute; left: 50%; transform: translateX(-50%); }
+.table-counters { font-size: 13px; font-weight: 600; color: #2a2a3a; text-align: right; line-height: 1.3; }
+#outputRegion table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#outputRegion thead { display: table-header-group; }
+#outputRegion th, #outputRegion td { border: 1px solid #7a7a8c; padding: 6px 10px; text-align: center; vertical-align: middle; width: 1%; }
+#outputRegion th { background: #d5d5e3; font-weight: 600; color: #222; line-height: 1.2; white-space: normal; word-wrap: break-word; }
+#outputRegion td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#outputRegion .highlight-prikhod { background-color: #ffeb3b !important; }
+#outputRegion .highlight-client-yellow { background-color: #fff176 !important; }
+#outputRegion .highlight-client-alert { background-color: #ffeb3b !important; font-weight: 600; }
+#outputRegion .highlight-ochered-diff { background-color: #ffe0b2 !important; }
+#outputRegion .group-separator { border-bottom: 3px solid #2a2a3a !important; }
+#outputErmann .registry-notice { text-align: center; font-weight: bold; font-size: 13px; color: #1a1a2e; margin-bottom: 12px; padding: 8px 12px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 8px; line-height: 1.4; }
+#outputErmann table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; }
+#outputErmann th, #outputErmann td { border: 1px solid #7a7a8c; padding: 5px 6px; text-align: center; vertical-align: middle; }
+#outputErmann th { background: #d5d5e3; font-weight: 600; color: #222; line-height: 1.1; white-space: normal; word-wrap: break-word; }
+#outputErmann td { white-space: pre-wrap; word-wrap: break-word; overflow: hidden; }
+#outputErmann .group-separator td { height: 1.2mm !important; background-color: #2a2a3a !important; padding: 0 !important; border-left: none !important; border-right: none !important; }
+#outputColgate .table-brand { font-size: 40.5px; }
+#outputColgate .registry-title { font-size: 27px; }
+#outputColgate .table-counters { font-size: 19.5px; }
+#outputColgate table { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
+#outputColgate th, #outputColgate td { border: 1px solid #7a7a8c; padding: 4px 5px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow-wrap: anywhere; }
+#outputColgate th { background: #d5d5e3; font-weight: 600; color: #222; line-height: 1.1; white-space: pre-line; }
+#outputColgate td { white-space: normal; overflow: visible; }
+tr { page-break-inside: avoid; break-inside: avoid; }
+@media print {
+    body { background: #fff !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; box-sizing: border-box !important; }
+    .back-btn, .header, .card { display: none !important; }
+    .registry-output { display: none !important; }
+    .registry-output.visible { display: block !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; border: none !important; overflow: visible !important; }
+    #outputRegion table { font-size: 11px !important; }
+    #outputRegion th, #outputRegion td { padding: 4px 6px !important; border-color: #555 !important; }
+    #outputErmann .registry-header-row { margin-bottom: 4px !important; }
+    #outputErmann .table-brand { font-size: 18px !important; }
+    #outputErmann .registry-title { font-size: 14px !important; }
+    #outputErmann .registry-notice { background: transparent !important; border: none !important; padding: 0 !important; margin-bottom: 4px !important; font-size: 8.5pt !important; line-height: 1.1 !important; }
+    #outputErmann table { font-size: 7.5pt !important; table-layout: fixed !important; }
+    #outputErmann th, #outputErmann td { padding: 2px 2px !important; border-color: #333 !important; line-height: 1.1 !important; }
+    #outputErmann .group-separator td { height: 0.8mm !important; }
+    #outputColgate .registry-header-row { margin-bottom: 4px !important; }
+    #outputColgate .table-brand { font-size: 27px !important; }
+    #outputColgate .registry-title { font-size: 21px !important; }
+    #outputColgate .table-counters { font-size: 19.5px !important; }
+    #outputColgate table { font-size: 11.25pt !important; table-layout: fixed !important; }
+    #outputColgate th, #outputColgate td { padding: 2px 2px !important; border-color: #333 !important; line-height: 1.1 !important; }
+}
+</style>
+</head>
+<body>
+<a href="http://okkam.space" class="back-btn">
+<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+<div class="container">
+    <div class="header">
+        <div class="header-icon" id="headerIcon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18" /></svg>
+        </div>
+        <h1>Печать реестров</h1>
+        <div class="header-subtitle">Автоматическое формирование реестров РТ, Эрманн, Эфко и Колгейт</div>
+    </div>
+
+    <div class="card">
+        <div class="fg">
+            <label>Дата</label>
+            <input type="text" id="dateInput" placeholder="ДД.ММ.ГГГГ" maxlength="10">
+            <div class="date-note">Дата используется только для реестров РТ, Эрманн и Колгейт</div>
+        </div>
+        <div class="fg">
+            <label>Данные</label>
+            <textarea id="dataInput" placeholder="Вставьте данные или перетащите файл .msg/xlsx"></textarea>
+        </div>
+        <div class="fg actions">
+            <button class="btn-print" id="printBtn">🖨️ Печать</button>
+            <button class="btn-file" id="chooseFileBtn">Выбрать файл</button>
+            <input type="file" id="fileInput" accept=".msg,.xlsx,.xls" hidden>
+        </div>
+        <div class="efko-status" id="efkoStatus"></div>
+    </div>
+
+    <div id="outputRegion" class="registry-output">
+        <div class="registry-header-row">
+            <div class="table-brand">Регионтранс</div>
+            <div class="registry-title" id="titleRegion">Отгрузка/Приход на </div>
+            <div class="table-counters" id="countersRegion">Отгрузки - 0 тс / (0) паллет<br>Приходы - 0 тс / (0) паллет</div>
+        </div>
+        <div>
+            <table id="resultTableRegion">
+                <thead>
+                    <tr>
+                        <th>Признак</th>
+                        <th>Очередь</th>
+                        <th>Заказ Но</th>
+                        <th>Время подачи</th>
+                        <th>Клиент</th>
+                        <th>Паллет</th>
+                        <th>Номер Путевого МПК</th>
+                        <th>Госномер тягач</th>
+                        <th>Водитель</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBodyRegion"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="outputErmann" class="registry-output">
+        <div class="registry-header-row">
+            <div class="table-brand">Эрманн</div>
+            <div class="registry-title" id="titleErmann">Реестр на </div>
+            <div class="table-counters"></div>
+        </div>
+        <div class="registry-notice"><strong>Если водитель не приехал в плановое время, незамедлительно информировать ТО ОККАМ письмом, в экстренных случаях – телефонным звонком.</strong></div>
+        <div id="tableWrapperErmann">
+            <table id="resultTableErmann">
+                <thead><tr id="tableHeadRowErmann"></tr></thead>
+                <tbody id="tableBodyErmann"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="outputColgate" class="registry-output">
+        <div class="registry-header-row">
+            <div class="table-brand">Колгейт</div>
+            <div class="registry-title" id="titleColgate"></div>
+            <div class="table-counters" id="countersColgate"></div>
+        </div>
+        <div id="tableWrapperColgate">
+            <table id="resultTableColgate"></table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', e => e.preventDefault());
+setTimeout(() => { location.reload(); }, 3600000);
+
+const dateInput = document.getElementById('dateInput');
+const dataInput = document.getElementById('dataInput');
+const printBtn = document.getElementById('printBtn');
+const chooseFileBtn = document.getElementById('chooseFileBtn');
+const fileInput = document.getElementById('fileInput');
+const efkoStatus = document.getElementById('efkoStatus');
+
+const outputRegion = document.getElementById('outputRegion');
+const titleRegion = document.getElementById('titleRegion');
+const countersRegion = document.getElementById('countersRegion');
+const tableBodyRegion = document.getElementById('tableBodyRegion');
+
+const outputErmann = document.getElementById('outputErmann');
+const titleErmann = document.getElementById('titleErmann');
+const tableHeadRowErmann = document.getElementById('tableHeadRowErmann');
+const tableBodyErmann = document.getElementById('tableBodyErmann');
+
+const outputColgate = document.getElementById('outputColgate');
+const titleColgate = document.getElementById('titleColgate');
+const countersColgate = document.getElementById('countersColgate');
+
+const expectedHeadersErmann = ["Время погрузки","Время","Порядок погрузки","Поставка","Имя получателя материала","Город получателя материала","Дата поставки","Водитель","Авто","телефон","Ко-во паллет"];
+const mergeColsErmann = ["Водитель","Авто","телефон","Время погрузки","Дата поставки"];
+const boldColsErmann = ["Поставка","Время погрузки","Водитель"];
+const STOP_TEXT_ERMANN = "при прибытии к грузоотправителю водитель обязан иметь при себе следующие документы:";
+
+const colgateTargetHeaders = [
+    "Транспортная компания",
+    "Комбинированная",
+    "Время начала отгрузки",
+    "Время окончания отгрузки",
+    "Название грузополучателя",
+    "Накладные",
+    "Город доставки",
+    "Адрес доставки",
+    "Кол-во паллет",
+    "Кол-во коробов",
+    "Примечание",
+    "Документы"
+];
+
+const colgateWrapHeaders = [
+    "Транспортная компания",
+    "Время начала отгрузки",
+    "Время окончания отгрузки",
+    "Название грузополучателя",
+    "Город доставки",
+    "Кол-во паллет",
+    "Кол-во коробов"
+];
+
+const colgateDetectHeaders = ["Тип доставки", ...colgateTargetHeaders];
+
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => { document.getElementById('headerIcon').classList.add('visible'); }, 100);
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const defaultDate = `${String(tomorrow.getDate()).padStart(2,'0')}.${String(tomorrow.getMonth()+1).padStart(2,'0')}.${tomorrow.getFullYear()}`;
+    dateInput.value = defaultDate;
+
+    updateTitles();
+
+    expectedHeadersErmann.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        if (header === "Порядок погрузки") th.style.fontSize = "0.7em";
+        tableHeadRowErmann.appendChild(th);
+    });
+});
+
+dateInput.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 2) value = value.substring(0, 2) + '.' + value.substring(2);
+    if (value.length > 4) value = value.substring(0, 5) + '.' + value.substring(5, 9);
+    e.target.value = value;
+    updateTitles();
+});
+
+function updateTitles() {
+    const dateValue = dateInput.value.trim() || '________';
+    titleRegion.textContent = `Отгрузка/Приход на ${dateValue}`;
+    titleErmann.textContent = `Реестр на ${dateValue}`;
+    titleColgate.textContent = `Реестр на ${dateValue}`;
+}
+
+dataInput.addEventListener('input', () => {
+    hideEfkoStatus();
+    processRegistryRegion();
+});
+
+dataInput.addEventListener('paste', () => {
+    setTimeout(() => {
+        hideEfkoStatus();
+        processRegistryRegion();
+    }, 50);
+});
+
+['dragenter','dragover','dragleave','drop'].forEach(ev => {
+    dataInput.addEventListener(ev, e => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, false);
+});
+
+['dragenter','dragover'].forEach(ev => {
+    dataInput.addEventListener(ev, () => dataInput.classList.add('dragover'), false);
+});
+
+['dragleave','drop'].forEach(ev => {
+    dataInput.addEventListener(ev, () => dataInput.classList.remove('dragover'), false);
+});
+
+dataInput.addEventListener('drop', (e) => {
+    if (e.dataTransfer.files.length) {
+        handleFile(e.dataTransfer.files[0]);
+    } else {
+        setTimeout(() => {
+            hideEfkoStatus();
+            processRegistryRegion();
+        }, 50);
+    }
+});
+
+chooseFileBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+    fileInput.value = '';
+});
+
+printBtn.addEventListener('click', () => {
+    if (outputErmann.classList.contains('visible') || outputColgate.classList.contains('visible')) {
+        setTimeout(() => window.print(), 200);
+        return;
+    }
+
+    if (outputRegion.classList.contains('visible') || dataInput.value.trim()) {
+        processRegistryRegion();
+        setTimeout(() => window.print(), 200);
+    }
+});
+
+window.addEventListener('resize', () => {
+    if (outputErmann.classList.contains('visible')) scaleTableErmann();
+});
+
+function hideOutputs() {
+    outputRegion.classList.remove('visible');
+    outputErmann.classList.remove('visible');
+    outputColgate.classList.remove('visible');
+}
+
+function hideEfkoStatus() {
+    efkoStatus.textContent = '';
+}
+
+async function handleFile(file) {
+    hideEfkoStatus();
+    const name = file.name.toLowerCase();
+
+    try {
+        if (name.endsWith('.msg')) {
+            await handleMsgUnified(file);
+        } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+            await handleExcelUnified(file);
+        } else {
+            const text = await file.text();
+            dataInput.value = text;
+            processRegistryRegion();
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Ошибка обработки файла: ' + err.message);
+        hideEfkoStatus();
+    }
+}
+
+async function handleExcelUnified(file) {
+    const buffer = await file.arrayBuffer();
+    const u8 = new Uint8Array(buffer);
+    const info = inspectExcelCandidate(u8);
+
+    if (info.valid) {
+        if (info.isColgateA1 || info.hasColgateHeaders) {
+            await processColgateFromArrayBuffer(buffer);
+            return;
+        }
+
+        if (info.isEfkoA1 || info.hasEfkoHeaders) {
+            await processEfkoFromArrayBuffer(buffer);
+            return;
+        }
+
+        if (info.hasErmanHeaders) {
+            hideOutputs();
+            hideEfkoStatus();
+            processExcelDataErmann(info.json);
+            return;
+        }
+
+        if (info.a1.trim() === '') {
+            hideOutputs();
+            hideEfkoStatus();
+            processExcelDataErmann(info.json);
+            return;
+        }
+    }
+
+    processErmannFromArrayBuffer(buffer);
+}
+
+async function handleMsgUnified(file) {
+    if (typeof XLSX === 'undefined' || !XLSX.CFB) {
+        alert('Библиотека XLSX недоступна.');
+        return;
+    }
+
+    const data = new Uint8Array(await file.arrayBuffer());
+    let cfb;
+
+    try {
+        cfb = XLSX.CFB.read(data, { type: 'array' });
+    } catch (err) {
+        alert('Ошибка чтения .msg файла: ' + err.message);
+        return;
+    }
+
+    const candidates = [];
+
+    try {
+        candidates.push(...getMsgAttachments(cfb));
+    } catch (e) {}
+
+    try {
+        candidates.push(...findAllXlsxInBytes(data));
+    } catch (e) {}
+
+    for (const candidate of candidates) {
+        const info = inspectExcelCandidate(candidate);
+        if (!info.valid) continue;
+
+        if (info.isColgateA1 || info.hasColgateHeaders) {
+            await processColgateFromArrayBuffer(uint8ToArrayBuffer(candidate));
+            return;
+        }
+
+        if (info.isEfkoA1 || info.hasEfkoHeaders) {
+            await processEfkoFromArrayBuffer(uint8ToArrayBuffer(candidate));
+            return;
+        }
+
+        if (info.hasErmanHeaders) {
+            hideOutputs();
+            hideEfkoStatus();
+            processExcelDataErmann(info.json);
+            return;
+        }
+    }
+
+    if (cfbHasAttachment(cfb)) {
+        alert('Не удалось определить тип реестра во вложении.');
+        return;
+    }
+
+    processRegionFromCfb(cfb);
+}
+
+function toSafeUint8(u8) {
+    if (!u8) return u8;
+    if (u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength) return u8;
+    return new Uint8Array(u8);
+}
+
+function findAllXlsxInBytes(bytes) {
+    const results = [];
+    if (!bytes || bytes.length < 100) return results;
+
+    const eocds = [];
+    for (let j = bytes.length - 22; j >= 0 && eocds.length < 50; j--) {
+        if (bytes[j] === 0x50 && bytes[j + 1] === 0x4B && bytes[j + 2] === 0x05 && bytes[j + 3] === 0x06) {
+            const commentLen = bytes[j + 20] | (bytes[j + 21] << 8);
+            const end = j + 22 + commentLen;
+            if (end <= bytes.length) eocds.push(end);
+        }
+    }
+
+    eocds.reverse();
+    if (!eocds.length) return results;
+
+    let count = 0;
+    for (let i = 0; i < bytes.length - 4 && count < 20; i++) {
+        if (bytes[i] === 0x50 && bytes[i + 1] === 0x4B && bytes[i + 2] === 0x03 && bytes[i + 3] === 0x04) {
+            for (const end of eocds) {
+                if (end > i + 22) {
+                    results.push(bytes.subarray(i, end));
+                    count++;
+                    break;
+                }
+            }
+        }
+    }
+
+    return results;
+}
+
+function parseOle10Native(content) {
+    try {
+        if (!content || content.length < 20) return null;
+
+        let offset = 4;
+
+        while (offset < content.length && content[offset] !== 0) offset++;
+        offset++;
+
+        while (offset < content.length && content[offset] !== 0) offset++;
+        offset++;
+
+        offset += 2;
+        offset += 4;
+
+        while (offset < content.length && content[offset] !== 0) offset++;
+        offset++;
+
+        if (offset + 4 > content.length) return null;
+
+        const dataSize = content[offset] | (content[offset + 1] << 8) | (content[offset + 2] << 16) | ((content[offset + 3] << 24) >>> 0);
+        offset += 4;
+
+        if (dataSize > 0 && offset + dataSize <= content.length) {
+            const data = content.subarray(offset, offset + dataSize);
+
+            if (data.length > 4 && data[0] === 0x50 && data[1] === 0x4B) {
+                return data;
+            }
+
+            const found = findAllXlsxInBytes(data);
+            if (found.length) return found[0];
+        }
+    } catch (e) {}
+
+    return null;
+}
+
+function extractXlsxFromOle(oleBytes) {
+    try {
+        const safeOle = toSafeUint8(oleBytes);
+        const candidates = [];
+
+        try {
+            const oleCfb = XLSX.CFB.read(safeOle, { type: 'array' });
+
+            if (oleCfb && oleCfb.FileIndex) {
+                const files = oleCfb.FileIndex;
+                const paths = oleCfb.FullPaths || [];
+
+                for (let i = 0; i < files.length; i++) {
+                    const entry = files[i];
+                    if (!entry || !entry.content || !entry.content.length) continue;
+
+                    const name = (entry.name || '').toLowerCase();
+                    const path = (paths[i] || '').toLowerCase();
+
+                    if (
+                        name === 'contents' ||
+                        name === 'package' ||
+                        name.includes('ole10native') ||
+                        path.includes('contents') ||
+                        path.includes('package') ||
+                        path.includes('ole10native')
+                    ) {
+                        const parsed = parseOle10Native(entry.content);
+                        if (parsed) candidates.push(parsed);
+
+                        candidates.push(...findAllXlsxInBytes(entry.content));
+
+                        if (entry.content.length > 4 && entry.content[0] === 0x50 && entry.content[1] === 0x4B) {
+                            candidates.push(entry.content);
+                        }
+                    }
+                }
+
+                for (let i = 0; i < files.length; i++) {
+                    const entry = files[i];
+                    if (!entry || !entry.content || entry.content.length < 100) continue;
+                    candidates.push(...findAllXlsxInBytes(entry.content));
+                }
+            }
+        } catch (e) {}
+
+        candidates.push(...findAllXlsxInBytes(safeOle));
+
+        for (const cand of candidates) {
+            const info = inspectExcelCandidate(cand);
+            if (info.valid) return cand;
+        }
+
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function getMsgAttachments(cfb) {
+    const attachments = [];
+    if (!cfb || !cfb.FileIndex) return attachments;
+
+    const paths = cfb.FullPaths || [];
+    const files = cfb.FileIndex;
+
+    for (let i = 0; i < files.length; i++) {
+        const entry = files[i];
+        if (!entry || !entry.content || !entry.content.length) continue;
+
+        const path = (paths[i] || '').toLowerCase();
+
+        if (path.includes('37010102')) {
+            const zips = findAllXlsxInBytes(entry.content);
+            if (zips.length) attachments.push(...zips);
+            else attachments.push(entry.content);
+        } else if (path.includes('3701000d')) {
+            const extracted = extractXlsxFromOle(entry.content);
+            if (extracted) attachments.push(extracted);
+        }
+    }
+
+    for (let i = 0; i < files.length; i++) {
+        const entry = files[i];
+        if (!entry || !entry.content || entry.content.length < 100) continue;
+
+        const path = (paths[i] || '').toLowerCase();
+
+        if (path.includes('__attach_version1.0_')) {
+            const zips = findAllXlsxInBytes(entry.content);
+            if (zips.length) attachments.push(...zips);
+        }
+    }
+
+    return attachments;
+}
+
+function cfbHasAttachment(cfb) {
+    if (!cfb) return false;
+
+    if (cfb.FullPaths && cfb.FullPaths.some(p => String(p).toLowerCase().includes('__attach_version1.0_'))) {
+        return true;
+    }
+
+    if (cfb.FileIndex && cfb.FileIndex.some(entry => entry && String(entry.name || '').toLowerCase().includes('__attach_version1.0_'))) {
+        return true;
+    }
+
+    return false;
+}
+
+function inspectExcelCandidate(u8) {
+    try {
+        const safe = toSafeUint8(u8);
+        const workbook = XLSX.read(safe, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+
+        if (!worksheet) return { valid: false };
+
+        let a1 = '';
+        if (worksheet['A1']) {
+            const cell = worksheet['A1'];
+            if (cell.v !== undefined && cell.v !== null) a1 = String(cell.v);
+            else if (cell.w !== undefined && cell.w !== null) a1 = String(cell.w);
+        }
+
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+        const firstRows = json.slice(0, 30);
+        const flat = firstRows.flat().map(v => normalizeStrErmann(v).toLowerCase()).join(' ');
+
+        const hasEfkoHeaders =
+            flat.includes('плановое прибытие') &&
+            (
+                flat.includes('дивизион') ||
+                flat.includes('номер рейса') ||
+                flat.includes('склад отправитель')
+            );
+
+        const ermanTargets = expectedHeadersErmann.map(eh => normalizeStrErmann(eh).toLowerCase());
+        let hasErmanHeaders = false;
+
+        for (const row of json) {
+            if (!Array.isArray(row)) continue;
+
+            const rowValues = new Set(row.map(cell => normalizeStrErmann(cell).toLowerCase()));
+            let matches = 0;
+
+            for (const target of ermanTargets) {
+                if (rowValues.has(target)) {
+                    matches++;
+                    if (matches >= 3) break;
+                }
+            }
+
+            if (matches >= 3) {
+                hasErmanHeaders = true;
+                break;
+            }
+        }
+
+        const isColgateA1 = normalizeStrErmann(a1).toLowerCase().includes('тип доставки');
+        const colgateTargets = colgateDetectHeaders.map(h => normalizeStrErmann(h).toLowerCase());
+        let hasColgateHeaders = false;
+
+        for (const row of json.slice(0, 10)) {
+            if (!Array.isArray(row)) continue;
+
+            const rowValues = new Set(row.map(cell => normalizeStrErmann(cell).toLowerCase()));
+            let matches = 0;
+
+            for (const target of colgateTargets) {
+                if (rowValues.has(target)) {
+                    matches++;
+                    if (matches >= 3) break;
+                }
+            }
+
+            if (matches >= 3) {
+                hasColgateHeaders = true;
+                break;
+            }
+        }
+
+        return {
+            valid: true,
+            a1,
+            isColgateA1,
+            isEfkoA1: isEfkoA1Value(a1),
+            hasEfkoHeaders,
+            hasErmanHeaders,
+            hasColgateHeaders,
+            json
+        };
+    } catch (e) {
+        return { valid: false };
+    }
+}
+
+function isEfkoA1Value(value) {
+    const val = String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    return val.includes('№ п/п') || val.includes('п/п');
+}
+
+function uint8ToArrayBuffer(u8) {
+    return u8.slice().buffer;
+}
+
+function currentDateDDMMYYYY() {
+    const now = new Date();
+    return `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()}`;
+}
+
+function dateToDDMMYYYYLocal(d) {
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+function excelSerialToDDMMYYYY(serial) {
+    const utc = new Date(Math.round((serial - 25569) * 86400 * 1000));
+    if (isNaN(utc.getTime())) return '';
+    return `${String(utc.getUTCDate()).padStart(2,'0')}.${String(utc.getUTCMonth()+1).padStart(2,'0')}.${utc.getUTCFullYear()}`;
+}
+
+function formatDateValueForFileName(value) {
+    if (value === null || value === undefined || value === '') return currentDateDDMMYYYY();
+
+    if (value instanceof Date) {
+        return dateToDDMMYYYYLocal(value);
+    }
+
+    if (typeof value === 'object') {
+        if (value.result !== undefined) return formatDateValueForFileName(value.result);
+        if (value.text !== undefined) return formatDateValueForFileName(value.text);
+    }
+
+    if (typeof value === 'number') {
+        const converted = excelSerialToDDMMYYYY(Math.floor(value));
+        if (converted) return converted;
+    }
+
+    const s = normalizeStrErmann(String(value));
+    const m = s.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);
+
+    if (m) {
+        const yyyy = m[3].length === 2 ? '20' + m[3] : m[3];
+        return `${String(m[1]).padStart(2,'0')}.${String(m[2]).padStart(2,'0')}.${yyyy}`;
+    }
+
+    const cleaned = s.replace(/[\\/:*?"<>|]/g, '').trim().replace(/\s+/g, '_');
+    return cleaned || currentDateDDMMYYYY();
+}
+
+function processRegistryRegion() {
+    const text = dataInput.value.trim();
+
+    if (!text) {
+        hideOutputs();
+        countersRegion.innerHTML = 'Отгрузки - 0 тс / (0) паллет<br>Приходы - 0 тс / (0) паллет';
+        return;
+    }
+
+    hideOutputs();
+    hideEfkoStatus();
+
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+
+    const firstLineCols = lines[0].split('\t');
+    const keywords = {
+        priznak: ['признак'],
+        ochered: ['очередь'],
+        zakaz: ['заказ'],
+        time: ['время', 'подачи'],
+        client: ['клиент', 'поиск', 'имя'],
+        pallet: ['паллет'],
+        mpk: ['путев', 'мпк'],
+        truck: ['тягач', 'госномер'],
+        driver: ['водитель']
+    };
+
+    let indices = { priznak: 0, ochered: 1, zakaz: 2, time: 3, client: 4, pallet: 5, mpk: 6, truck: 7, driver: 8 };
+    let startIndex = 0;
+    let matchCount = 0;
+
+    firstLineCols.forEach(col => {
+        const lower = col.toLowerCase();
+        for (let key in keywords) {
+            if (keywords[key].some(kw => lower.includes(kw))) {
+                matchCount++;
+                break;
+            }
+        }
+    });
+
+    if (matchCount >= 2) {
+        startIndex = 1;
+        firstLineCols.forEach((col, idx) => {
+            const lower = col.toLowerCase();
+            if (keywords.priznak.some(kw => lower.includes(kw))) indices.priznak = idx;
+            if (keywords.ochered.some(kw => lower.includes(kw))) indices.ochered = idx;
+            if (keywords.zakaz.some(kw => lower.includes(kw))) indices.zakaz = idx;
+            if (keywords.time.some(kw => lower.includes(kw))) indices.time = idx;
+            if (keywords.client.some(kw => lower.includes(kw))) indices.client = idx;
+            if (keywords.pallet.some(kw => lower.includes(kw))) indices.pallet = idx;
+            if (keywords.mpk.some(kw => lower.includes(kw))) indices.mpk = idx;
+            if (keywords.truck.some(kw => lower.includes(kw)) && !lower.includes('прицеп')) indices.truck = idx;
+            if (keywords.driver.some(kw => lower.includes(kw))) indices.driver = idx;
+        });
+    }
+
+    let rowsData = [];
+
+    for (let i = startIndex; i < lines.length; i++) {
+        const cols = lines[i].split('\t');
+        rowsData.push({
+            priznak: (cols[indices.priznak] || '').trim(),
+            ochered: (cols[indices.ochered] || '').trim(),
+            zakaz: (cols[indices.zakaz] || '').trim(),
+            time: (cols[indices.time] || '').trim(),
+            client: (cols[indices.client] || '').trim(),
+            pallet: (cols[indices.pallet] || '').trim(),
+            mpk: (cols[indices.mpk] || '').trim(),
+            truck: (cols[indices.truck] || '').trim(),
+            driver: (cols[indices.driver] || '').trim()
+        });
+    }
+
+    tableBodyRegion.innerHTML = '';
+
+    let shippingCount = 0;
+    let arrivalCount = 0;
+    let shippingPalletsTotal = 0;
+    let arrivalPalletsTotal = 0;
+    let currentGroupRows = [];
+    let allGroups = [];
+
+    function finishGroup() {
+        if (currentGroupRows.length === 0) return;
+
+        let hasShipping = false;
+        let hasArrival = false;
+
+        currentGroupRows.forEach(r => {
+            const pLower = r.priznak.toLowerCase();
+            const palletNum = parseFloat(r.pallet.replace(',', '.')) || 0;
+            const rp = Math.ceil(palletNum);
+
+            if (pLower.includes('отгруз')) {
+                hasShipping = true;
+                shippingPalletsTotal += rp;
+            } else if (pLower.includes('приход')) {
+                hasArrival = true;
+                arrivalPalletsTotal += rp;
+            }
+        });
+
+        if (hasShipping) shippingCount++;
+        if (hasArrival) arrivalCount++;
+
+        const shippingRows = currentGroupRows.filter(r => r.priznak.toLowerCase().includes('отгруз'));
+        let hasDifferentOchered = shippingRows.length > 1 && shippingRows.some(r => r.ochered !== shippingRows[0].ochered);
+
+        allGroups.push({ rows: [...currentGroupRows], hasDifferentOchered });
+        currentGroupRows = [];
+    }
+
+    rowsData.forEach((row, index, arr) => {
+        let isLastInGroup = false;
+
+        if (index < arr.length - 1) {
+            const next = arr[index + 1];
+            const sameVehicleFields = (row.time === next.time && row.truck === next.truck && row.driver === next.driver);
+
+            if ((!row.driver && !next.driver || !row.truck && !next.truck) && row.time === next.time && row.priznak === next.priznak) {
+                if (row.mpk !== next.mpk || !sameVehicleFields) isLastInGroup = true;
+            } else {
+                if (!sameVehicleFields) isLastInGroup = true;
+            }
+        } else {
+            isLastInGroup = true;
+        }
+
+        currentGroupRows.push(row);
+        if (isLastInGroup) finishGroup();
+    });
+
+    allGroups.forEach(group => {
+        group.rows.forEach((row, rIdx) => {
+            const tr = document.createElement('tr');
+            if (rIdx === group.rows.length - 1) tr.classList.add('group-separator');
+
+            const tdPriznak = document.createElement('td');
+            tdPriznak.textContent = row.priznak;
+            if (row.priznak.toLowerCase() === 'приход') tdPriznak.classList.add('highlight-prikhod');
+
+            const tdOchered = document.createElement('td');
+            tdOchered.textContent = row.ochered;
+            if (group.hasDifferentOchered && row.priznak.toLowerCase().includes('отгруз')) tdOchered.classList.add('highlight-ochered-diff');
+
+            const createTd = (text) => {
+                const td = document.createElement('td');
+                td.textContent = text;
+                return td;
+            };
+
+            const tdClient = document.createElement('td');
+            const clientUpper = row.client.toUpperCase();
+            tdClient.textContent = row.client;
+
+            if (clientUpper.includes('БЭСТ') || clientUpper.includes('ТАБЫШ')) {
+                tdClient.classList.add('highlight-client-yellow');
+            } else if (['ЧИЖИК','БРИСТОЛЬ','МЭТРО','МЕТРО'].some(c => clientUpper.includes(c))) {
+                tdClient.classList.add('highlight-client-alert');
+                tdClient.textContent = '⚠️ ' + row.client;
+            }
+
+            tr.appendChild(tdPriznak);
+            tr.appendChild(tdOchered);
+            tr.appendChild(createTd(row.zakaz));
+            tr.appendChild(createTd(row.time));
+            tr.appendChild(tdClient);
+            tr.appendChild(createTd(row.pallet));
+            tr.appendChild(createTd(row.mpk));
+            tr.appendChild(createTd(row.truck));
+            tr.appendChild(createTd(row.driver));
+
+            tableBodyRegion.appendChild(tr);
+        });
+    });
+
+    countersRegion.innerHTML = `Отгрузки - ${shippingCount} тс / (${shippingPalletsTotal}) паллет<br>Приходы - ${arrivalCount} тс / (${arrivalPalletsTotal}) паллет`;
+    outputRegion.classList.add('visible');
+}
+
+function processErmannFromArrayBuffer(buffer) {
+    hideOutputs();
+    hideEfkoStatus();
+
+    const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+    processExcelDataErmann(json);
+}
+
+function normalizeStrErmann(val) {
+    if (val === null || val === undefined) return "";
+    return String(val).replace(/[\r\n\t\xa0]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function formatExcelValueErmann(val, colName) {
+    if (val === null || val === undefined || val === "") return "";
+
+    if (typeof val === 'number') {
+        const lowerCol = colName.toLowerCase();
+
+        if (lowerCol === "время погрузки") {
+            let excelDays = Math.floor(val);
+            let fraction = val - excelDays;
+            let dateStr = "";
+
+            if (excelDays > 0) {
+                let utc = new Date(new Date((excelDays - 25569) * 86400 * 1000).getTime() + Math.abs(new Date().getTimezoneOffset() * 60000));
+                dateStr = `${String(utc.getUTCDate()).padStart(2,'0')}.${String(utc.getUTCMonth()+1).padStart(2,'0')}.${utc.getUTCFullYear()}`;
+            }
+
+            let totalSecs = Math.round(fraction * 86400);
+            let timeStr = `${String(Math.floor(totalSecs/3600)).padStart(2,'0')}:${String(Math.floor((totalSecs%3600)/60)).padStart(2,'0')}`;
+
+            return (dateStr && fraction > 0) ? `${dateStr} ${timeStr}` : (dateStr || timeStr);
+        }
+
+        if (lowerCol.includes("время")) {
+            let fraction = val - Math.floor(val);
+            if (val > 0 && val < 1) fraction = val;
+            let totalSecs = Math.round(fraction * 86400);
+            return `${String(Math.floor(totalSecs/3600)).padStart(2,'0')}:${String(Math.floor((totalSecs%3600)/60)).padStart(2,'0')}`;
+        }
+
+        if (lowerCol.includes("дата")) {
+            let excelDays = Math.floor(val);
+            if (excelDays > 0) {
+                let utc = new Date(new Date((excelDays - 25569) * 86400 * 1000).getTime() + Math.abs(new Date().getTimezoneOffset() * 60000));
+                return `${String(utc.getUTCDate()).padStart(2,'0')}.${String(utc.getUTCMonth()+1).padStart(2,'0')}.${utc.getUTCFullYear()}`;
+            }
+        }
+    }
+
+    return String(val);
+}
+
+function processExcelDataErmann(json) {
+    if (!json || json.length === 0) {
+        alert('Файл пуст.');
+        return;
+    }
+
+    let headerRowIndex = -1;
+    const colIndices = {};
+
+    for (let r = 0; r < json.length; r++) {
+        const row = json[r];
+        if (!Array.isArray(row)) continue;
+
+        let matches = 0;
+        const tempIndices = {};
+
+        expectedHeadersErmann.forEach(eh => {
+            const idx = row.findIndex(cell => normalizeStrErmann(cell).toLowerCase() === normalizeStrErmann(eh).toLowerCase());
+            if (idx !== -1) {
+                matches++;
+                tempIndices[eh] = idx;
+            } else {
+                tempIndices[eh] = -1;
+            }
+        });
+
+        if (matches >= 3) {
+            headerRowIndex = r;
+            Object.assign(colIndices, tempIndices);
+            break;
+        }
+    }
+
+    if (headerRowIndex === -1) {
+        alert('Не удалось автоматически найти заголовки таблицы.');
+        return;
+    }
+
+    let stopRowIndex = json.findIndex(row => Array.isArray(row) && row.some(cell => normalizeStrErmann(cell).toLowerCase().includes(STOP_TEXT_ERMANN)));
+    let maxRowIndex = stopRowIndex !== -1 ? Math.max(headerRowIndex + 1, stopRowIndex - 1) : json.length;
+
+    let groups = [];
+    let currentGroup = [];
+    let lastDriver = null;
+
+    for (let i = headerRowIndex + 1; i < maxRowIndex; i++) {
+        const row = json[i];
+        if (!row || !Array.isArray(row)) continue;
+
+        const hasData = expectedHeadersErmann.some(eh => colIndices[eh] !== -1 && row[colIndices[eh]] !== undefined && normalizeStrErmann(row[colIndices[eh]]) !== "");
+
+        if (!hasData) {
+            if (currentGroup.length > 0) {
+                groups.push(currentGroup);
+                currentGroup = [];
+                lastDriver = null;
+            }
+            continue;
+        }
+
+        const driverIdx = colIndices["Водитель"];
+        const driverVal = (driverIdx !== -1 && row[driverIdx] !== undefined) ? normalizeStrErmann(row[driverIdx]) : "";
+
+        if (currentGroup.length > 0 && driverVal !== lastDriver) {
+            groups.push(currentGroup);
+            currentGroup = [];
+        }
+
+        const rowData = {};
+
+        expectedHeadersErmann.forEach(eh => {
+            let cellVal = (colIndices[eh] !== -1 && row[colIndices[eh]] !== undefined) ? row[colIndices[eh]] : "";
+            rowData[eh] = normalizeStrErmann(formatExcelValueErmann(cellVal, eh));
+        });
+
+        currentGroup.push(rowData);
+        lastDriver = driverVal;
+    }
+
+    if (currentGroup.length > 0) groups.push(currentGroup);
+
+    renderTableErmann(groups);
+}
+
+function renderTableErmann(groups) {
+    tableBodyErmann.innerHTML = '';
+    if (groups.length === 0) return;
+
+    groups.forEach((group, gIdx) => {
+        let rowspans = Array.from({length: group.length}, () => ({}));
+
+        for (let c of expectedHeadersErmann) {
+            if (mergeColsErmann.includes(c)) {
+                let i = 0;
+                while (i < group.length) {
+                    let span = 1;
+                    while (i + span < group.length && group[i][c] === group[i + span][c] && group[i][c] !== "") span++;
+                    rowspans[i][c] = span;
+                    for (let j = 1; j < span; j++) rowspans[i + j][c] = 0;
+                    i += span;
+                }
+            } else {
+                for (let i = 0; i < group.length; i++) rowspans[i][c] = 1;
+            }
+        }
+
+        group.forEach((row, rIdx) => {
+            const tr = document.createElement('tr');
+
+            expectedHeadersErmann.forEach(c => {
+                const span = rowspans[rIdx][c];
+                if (span === 0) return;
+
+                const td = document.createElement('td');
+                let cellText = row[c];
+
+                if (c.toLowerCase() === "телефон") cellText = cellText.replace(/,/g, ',\n');
+
+                td.textContent = cellText;
+
+                if (boldColsErmann.includes(c)) td.style.fontWeight = 'bold';
+                if (span > 1) td.setAttribute('rowspan', span);
+
+                tr.appendChild(td);
+            });
+
+            tableBodyErmann.appendChild(tr);
+        });
+
+        if (gIdx < groups.length - 1) {
+            const sepTr = document.createElement('tr');
+            sepTr.className = 'group-separator';
+            const sepTd = document.createElement('td');
+            sepTd.setAttribute('colspan', expectedHeadersErmann.length);
+            sepTr.appendChild(sepTd);
+            tableBodyErmann.appendChild(sepTr);
+        }
+    });
+
+    outputErmann.classList.add('visible');
+    setTimeout(scaleTableErmann, 50);
+}
+
+function scaleTableErmann() {
+    const table = document.getElementById('resultTableErmann');
+    if (!outputErmann.classList.contains('visible') || !table) return;
+
+    table.style.zoom = 1;
+    const wrapperWidth = outputErmann.clientWidth - 40;
+    const tableWidth = table.scrollWidth;
+
+    if (tableWidth > wrapperWidth) table.style.zoom = (wrapperWidth / tableWidth) - 0.005;
+}
+
+function processRegionFromCfb(cfb) {
+    const entries = cfb.FileIndex || [];
+    let allTexts = [];
+
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        if (!entry || !entry.content || entry.content.length === 0) continue;
+
+        const name = (entry.name || '').toLowerCase();
+        let text = "";
+
+        if (name.includes('1009') && entry.content.length > 16) {
+            try {
+                const raw = decompressRTF(entry.content);
+                if (raw) text = rtfToText(raw);
+            } catch (x) {}
+        } else if (name.includes('001f')) {
+            text = decodeUtf16le(entry.content);
+        } else if (name.includes('001e')) {
+            text = decodeWin1251(entry.content);
+        } else if (name.includes('1000') || name.includes('1013')) {
+            text = decodeUtf16le(entry.content);
+            if (!text || text.length < 10) text = decodeWin1251(entry.content);
+        }
+
+        if (text && text.length > 20) {
+            const clean = text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+            if (clean.length > 20) allTexts.push({ name: entry.name, text: clean });
+        }
+    }
+
+    let bestText = "";
+    let bestScore = -1;
+
+    for (const item of allTexts) {
+        const up = item.text.toUpperCase();
+        let score = 0;
+
+        if (up.includes('ПРИЗНАК') && up.includes('ОЧЕРЕДЬ')) score += 30;
+        if (up.includes('ПРОСИМ ПРОВЕРИТЬ') || up.includes('ОТГРУЗКА/ПРИХОД')) score += 10;
+        if (up.includes('<TABLE') || up.includes('<TR') || up.includes('<TD')) score += 20;
+        if (up.includes('<HTML') || up.includes('<BODY') || up.includes('<DIV')) score += 5;
+        if (item.text.includes('Паллет') || item.text.includes('паллет')) score += 10;
+        if (up.includes('С УВАЖЕНИЕМ') || up.includes('ООО')) score += 5;
+        if (item.text.includes('\t') || item.text.split('\n').length > 3) score += 10;
+
+        score += Math.min(Math.floor(item.text.length / 200), 10);
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestText = item.text;
+        }
+    }
+
+    if (bestText && bestScore >= 20) {
+        const up = bestText.toUpperCase();
+        const isHtml = up.includes('<') && (
+            up.includes('<TABLE') || up.includes('<DIV') || up.includes('<HTML') || up.includes('<BODY') ||
+            up.includes('<TR') || up.includes('<TD') || up.includes('<SPAN') || up.includes('<P>') || up.includes('<BR')
+        );
+
+        let finalText = isHtml ? extractFromHtml(bestText) : sliceRelevantText(bestText);
+
+        if (finalText && finalText.length > 10) {
+            dataInput.value = finalText;
+            processRegistryRegion();
+        } else {
+            alert("Не удалось выделить таблицу из .msg файла.");
+        }
+    } else {
+        alert("В .msg файле не найдено тело письма.");
+    }
+}
+
+function decodeUtf16le(bytes) {
+    try {
+        return new TextDecoder('utf-16le').decode(bytes);
+    } catch (e) {}
+
+    let result = '';
+    for (let i = 0; i < bytes.length - 1; i += 2) {
+        const code = bytes[i] | (bytes[i + 1] << 8);
+        if (code !== 0) result += String.fromCharCode(code);
+    }
+
+    return result;
+}
+
+function decodeWin1251(bytes) {
+    try {
+        return new TextDecoder('windows-1251').decode(bytes);
+    } catch (e) {}
+
+    try {
+        return new TextDecoder('utf-8').decode(bytes);
+    } catch (e) {}
+
+    return '';
+}
+
+function decompressRTF(data) {
+    const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+    if (bytes.length < 16) return null;
+
+    const compSize = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | ((bytes[3] << 24) >>> 0);
+    const rawSize = bytes[4] | (bytes[5] << 8) | (bytes[6] << 16) | ((bytes[7] << 24) >>> 0);
+    const compType = bytes[8] | (bytes[9] << 8) | (bytes[10] << 16) | ((bytes[11] << 24) >>> 0);
+
+    if (compType === 0x414c454d) return bytes.slice(16, 16 + rawSize);
+    if (compType !== 0x75465a4c) return null;
+
+    const LZFU_INIT = "{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\n\\r\\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx";
+    const dict = new Uint8Array(4096);
+
+    for (let i = 0; i < LZFU_INIT.length && i < 4096; i++) dict[i] = LZFU_INIT.charCodeAt(i);
+
+    let dictWrite = LZFU_INIT.length;
+    const output = new Uint8Array(rawSize);
+    let outPos = 0;
+    let inPos = 16;
+
+    while (outPos < rawSize && inPos < bytes.length) {
+        const flags = bytes[inPos++];
+
+        for (let bit = 0; bit < 8 && outPos < rawSize && inPos < bytes.length; bit++) {
+            if (flags & (1 << bit)) {
+                if (inPos + 1 >= bytes.length) break;
+
+                const b1 = bytes[inPos++];
+                const b2 = bytes[inPos++];
+                const offset = (b1 << 4) | (b2 >> 4);
+                const length = (b2 & 0x0F) + 2;
+
+                for (let j = 0; j < length && outPos < rawSize; j++) {
+                    const ch = dict[(offset + j) % 4096];
+                    output[outPos++] = ch;
+                    dict[dictWrite % 4096] = ch;
+                    dictWrite++;
+                }
+            } else {
+                const ch = bytes[inPos++];
+                output[outPos++] = ch;
+                dict[dictWrite % 4096] = ch;
+                dictWrite++;
+            }
+        }
+    }
+
+    return output.slice(0, outPos);
+}
+
+function rtfToText(rtfBytes) {
+    let text = '';
+
+    try {
+        text = new TextDecoder('windows-1251').decode(rtfBytes);
+    } catch (e) {
+        try {
+            text = new TextDecoder('utf-8').decode(rtfBytes);
+        } catch (e2) {
+            return '';
+        }
+    }
+
+    text = text.replace(/\\cell/gi, '\t');
+    text = text.replace(/\\row/gi, '\n');
+    text = text.replace(/\\par[d]?/gi, '\n');
+    text = text.replace(/\\tab/gi, '\t');
+    text = text.replace(/\\line/gi, '\n');
+    text = text.replace(/\\'[0-9a-f]{2}/gi, (m) => String.fromCharCode(parseInt(m.substring(2), 16)));
+    text = text.replace(/\\u(\d+)\s?/gi, (m, num) => String.fromCharCode(parseInt(num)));
+    text = text.replace(/\\[a-z]+\d*\s?/gi, '');
+    text = text.replace(/[{}]/g, '');
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    return text.trim();
+}
+
+function extractFromHtml(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    let result = "";
+
+    function walk(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            result += node.textContent;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+
+            if (tag === 'br' || tag === 'p' || tag === 'div' || tag === 'tr') result += '\n';
+            else if (tag === 'td' || tag === 'th') result += '\t';
+
+            for (let child of node.childNodes) walk(child);
+
+            if (tag === 'tr' || tag === 'p' || tag === 'div') result += '\n';
+        }
+    }
+
+    walk(doc.body);
+    return sliceRelevantText(result);
+}
+
+function sliceRelevantText(text) {
+    if (!text) return null;
+
+    let t = text.replace(/\r\n/g, '\n').replace(/&nbsp;/gi, ' ');
+    const lines = t.split('\n');
+
+    let searchFrom = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const upper = lines[i].toUpperCase().replace(/\s+/g, ' ').trim();
+        if (
+            upper.includes('ЗАКАЗЫ ГОТОВИТЬ К ОТГРУЗКЕ НА ДАТУ ОТГРУЗКИ') ||
+            upper.includes('ПРОСИМ ПРОВЕРИТЬ, ЗАКАЗЫ ПОЛУЧЕНЫ') ||
+            upper.includes('ПРОСИМ ПРОВЕРИТЬ ЗАКАЗЫ ПОЛУЧЕНЫ')
+        ) {
+            searchFrom = i;
+            break;
+        }
+    }
+
+    let headerLineIdx = -1;
+    for (let i = searchFrom; i < lines.length; i++) {
+        const lower = lines[i].trim().toLowerCase();
+        if (lower === 'признак' || (lower.includes('признак') && (lower.includes('очередь') || lower.includes('заказ')))) {
+            headerLineIdx = i;
+            break;
+        }
+    }
+
+    if (headerLineIdx === -1) {
+        for (let i = 0; i < lines.length; i++) {
+            const lower = lines[i].trim().toLowerCase();
+            if (lower === 'признак' || (lower.includes('признак') && (lower.includes('очередь') || lower.includes('заказ')))) {
+                headerLineIdx = i;
+                break;
+            }
+        }
+    }
+
+    if (headerLineIdx === -1) return null;
+
+    t = lines.slice(headerLineIdx).join('\n');
+
+    let endIdx = t.search(/С\s+Уважением/i);
+    if (endIdx === -1) endIdx = t.search(/ООО\s+[«"']Регионтранс[»"']/i);
+    if (endIdx !== -1) t = t.substring(0, endIdx);
+
+    t = t.replace(/\n{3,}/g, '\n\n').trim();
+    t = normalizeTableText(t);
+
+    return t;
+}
+
+function normalizeTableText(text) {
+    const lines = text.split('\n');
+    if (lines.length === 0) return text;
+    if (lines.some(l => l.includes('\t'))) return text;
+
+    const NUM_COLS = 13;
+
+    let headerStart = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim().toLowerCase() === 'признак') {
+            headerStart = i;
+            break;
+        }
+    }
+
+    if (headerStart === -1) return text;
+
+    let firstDataIdx = -1;
+    for (let i = headerStart + 1; i < lines.length; i++) {
+        const lower = lines[i].trim().toLowerCase();
+        if (lower === 'отгрузка' || lower === 'приход') {
+            firstDataIdx = i;
+            break;
+        }
+    }
+
+    if (firstDataIdx === -1) return text;
+
+    const headers = [];
+    for (let i = headerStart; i < firstDataIdx; i++) {
+        const trimmed = lines[i].trim();
+        if (trimmed.length > 0) headers.push(trimmed);
+    }
+
+    while (headers.length < NUM_COLS) headers.push('');
+
+    const grouped = [headers.slice(0, NUM_COLS).join('\t')];
+    const recordStarts = [];
+
+    for (let i = firstDataIdx; i < lines.length; i++) {
+        const lower = lines[i].trim().toLowerCase();
+        if (lower === 'отгрузка' || lower === 'приход') recordStarts.push(i);
+    }
+
+    for (let r = 0; r < recordStarts.length; r++) {
+        const start = recordStarts[r];
+        const end = (r + 1 < recordStarts.length) ? recordStarts[r + 1] : lines.length;
+
+        const values = [];
+        for (let i = start; i < end; i++) {
+            const trimmed = lines[i].trim();
+            if (trimmed.length > 0) values.push(trimmed);
+        }
+
+        if (values.length === 0) continue;
+
+        const cells = [values[0]];
+
+        if (values.length > 1 && /^\d+$/.test(values[1])) {
+            cells.push(values[1]);
+            for (let j = 2; j < values.length; j++) cells.push(values[j]);
+        } else {
+            cells.push('');
+            for (let j = 1; j < values.length; j++) cells.push(values[j]);
+        }
+
+        while (cells.length < NUM_COLS) cells.push('');
+        grouped.push(cells.slice(0, NUM_COLS).join('\t'));
+    }
+
+    return grouped.join('\n');
+}
+
+async function processEfkoFromArrayBuffer(inputBuffer) {
+    if (typeof ExcelJS === 'undefined') {
+        alert('Библиотека ExcelJS не загружена.');
+        return;
+    }
+
+    hideOutputs();
+    efkoStatus.textContent = '⏳ Чтение и обработка файла...';
+    efkoStatus.style.color = '#2c6e49';
+
+    try {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(inputBuffer);
+
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+            alert('В файле не найдено листов.');
+            efkoStatus.textContent = '';
+            return;
+        }
+
+        const colsToFind = [
+            { key: 'npp', keywords: ['№ п/п', 'п/п', 'npp'] },
+            { key: 'plan_arrival', keywords: ['плановое прибытие', 'под погрузку'] },
+            { key: 'divizion', keywords: ['дивизион'] },
+            { key: 'nomer_reisa', keywords: ['номер рейса'] },
+            { key: 'sklad', keywords: ['склад отправитель', 'склад'] },
+            { key: 'gruzopoluchatel', keywords: ['наименование грузополучателя', 'грузополучателя', 'грузополучатель'] },
+            { key: 'tochki', keywords: ['количество точек выгрузки', 'количество точек', 'точек выгрузки'] },
+            { key: 'pallets', keywords: ['количество паллет', 'паллет'] },
+            { key: 'gruzopodemnost', keywords: ['грузоподъемность'] },
+            { key: 'docs', keywords: ['количество документов по клиенту', 'количество документов', 'документов'] },
+            { key: 'data_dostavki', keywords: ['дата доставки'] }
+        ];
+
+        let foundCols = {};
+        let planArrivalCol = -1;
+        let planArrivalRow = -1;
+
+        for (let r = 1; r <= 5; r++) {
+            let row = worksheet.getRow(r);
+            row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+                let val = String(cell.value || '').toLowerCase().trim();
+
+                for (let col of colsToFind) {
+                    if (!foundCols[col.key]) {
+                        for (let kw of col.keywords) {
+                            if (val.includes(kw)) {
+                                foundCols[col.key] = colNumber;
+                                if (col.key === 'plan_arrival') {
+                                    planArrivalCol = colNumber;
+                                    planArrivalRow = r;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        let planDateCol = -1;
+        let planTimeCol = -1;
+
+        let searchRow = planArrivalRow > 0 ? planArrivalRow + 1 : 2;
+        if (searchRow <= 5 && planArrivalCol > 0) {
+            let rowS = worksheet.getRow(searchRow);
+            for (let c = Math.max(1, planArrivalCol - 1); c <= planArrivalCol + 3; c++) {
+                let cell = rowS.getCell(c);
+                let val = String(cell.value || '').toLowerCase().trim();
+                if (val === 'дата' && planDateCol === -1) planDateCol = c;
+                if (val === 'время' && planTimeCol === -1) planTimeCol = c;
+            }
+        }
+
+        if ((planDateCol === -1 || planTimeCol === -1) && planArrivalRow > 0) {
+            let rowP = worksheet.getRow(planArrivalRow);
+            for (let c = Math.max(1, planArrivalCol - 1); c <= planArrivalCol + 3; c++) {
+                let cell = rowP.getCell(c);
+                let val = String(cell.value || '').toLowerCase().trim();
+                if (val === 'дата' && planDateCol === -1) planDateCol = c;
+                if (val === 'время' && planTimeCol === -1) planTimeCol = c;
+            }
+        }
+
+        if (planDateCol === -1 || planTimeCol === -1) {
+            let row2 = worksheet.getRow(2);
+            row2.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+                let val = String(cell.value || '').toLowerCase().trim();
+                if (val === 'дата' && planDateCol === -1) planDateCol = colNumber;
+                if (val === 'время' && planTimeCol === -1) planTimeCol = colNumber;
+            });
+        }
+
+        const targetCols = [
+            { orig: foundCols.npp || -1 },
+            { orig: planDateCol },
+            { orig: planTimeCol },
+            { orig: foundCols.divizion || -1 },
+            { orig: foundCols.nomer_reisa || -1 },
+            { orig: foundCols.sklad || -1 },
+            { orig: foundCols.gruzopoluchatel || -1 },
+            { orig: foundCols.tochki || -1 },
+            { orig: foundCols.pallets || -1 },
+            { orig: foundCols.gruzopodemnost || -1 },
+            { orig: foundCols.docs || -1 },
+            { orig: foundCols.data_dostavki || -1 }
+        ];
+
+        if (!targetCols.some(tc => tc.orig > 0)) {
+            alert('Не удалось найти нужные столбцы в файле.');
+            efkoStatus.textContent = '';
+            return;
+        }
+
+        let headerRowCount = 2;
+        for (let r = 1; r <= 5; r++) {
+            let row = worksheet.getRow(r);
+            let cell1Val = row.getCell(1).value;
+            if (cell1Val !== null && cell1Val !== undefined) {
+                let num = typeof cell1Val === 'number' ? cell1Val : parseInt(String(cell1Val).replace(/\D/g, ''), 10);
+                if (!isNaN(num) && num > 0 && r > 2) {
+                    headerRowCount = r - 1;
+                    break;
+                }
+            }
+        }
+
+        let headerStyles = {};
+        for (let i = 0; i < targetCols.length; i++) {
+            let colIdx = targetCols[i].orig;
+            let style1 = {};
+            let style2 = {};
+
+            if (colIdx > 0) {
+                let cell1 = worksheet.getRow(1).getCell(colIdx);
+                let cell2 = worksheet.getRow(2).getCell(colIdx);
+
+                try { if (cell1.fill) style1.fill = JSON.parse(JSON.stringify(cell1.fill)); } catch (e) {}
+                try { if (cell2.fill) style2.fill = JSON.parse(JSON.stringify(cell2.fill)); } catch (e) {}
+                try { if (cell1.font) style1.font = JSON.parse(JSON.stringify(cell1.font)); } catch (e) {}
+                try { if (cell2.font) style2.font = JSON.parse(JSON.stringify(cell2.font)); } catch (e) {}
+                try { if (cell1.alignment) style1.alignment = JSON.parse(JSON.stringify(cell1.alignment)); } catch (e) {}
+                try { if (cell2.alignment) style2.alignment = JSON.parse(JSON.stringify(cell2.alignment)); } catch (e) {}
+                try { if (cell1.border) style1.border = JSON.parse(JSON.stringify(cell1.border)); } catch (e) {}
+                try { if (cell2.border) style2.border = JSON.parse(JSON.stringify(cell2.border)); } catch (e) {}
+            }
+
+            headerStyles[i] = { style1, style2 };
+        }
+
+        let dataRows = [];
+
+        for (let r = headerRowCount + 1; r <= worksheet.rowCount; r++) {
+            let row = worksheet.getRow(r);
+            let hasData = false;
+
+            for (let tc of targetCols) {
+                if (tc.orig <= 0) continue;
+                let cell = row.getCell(tc.orig);
+                if (cell.value !== null && cell.value !== undefined && String(cell.value).trim() !== '') {
+                    hasData = true;
+                    break;
+                }
+            }
+
+            if (!hasData) continue;
+
+            let rowData = { values: [], styles: [] };
+
+            for (let tc of targetCols) {
+                if (tc.orig <= 0) {
+                    rowData.values.push('');
+                    rowData.styles.push({ fill: null, font: null, alignment: null, border: null, numFmt: undefined });
+                    continue;
+                }
+
+                let cell = row.getCell(tc.orig);
+                rowData.values.push(cell.value);
+
+                let style = { fill: null, font: null, alignment: null, border: null, numFmt: cell.numFmt };
+
+                try { if (cell.fill) style.fill = JSON.parse(JSON.stringify(cell.fill)); } catch (e) {}
+                try { if (cell.font) style.font = JSON.parse(JSON.stringify(cell.font)); } catch (e) {}
+                try { if (cell.alignment) style.alignment = JSON.parse(JSON.stringify(cell.alignment)); } catch (e) {}
+                try { if (cell.border) style.border = JSON.parse(JSON.stringify(cell.border)); } catch (e) {}
+
+                rowData.styles.push(style);
+            }
+
+            dataRows.push(rowData);
+        }
+
+        function getNppValue(rowData) {
+            let val = rowData.values[0];
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string') {
+                let num = parseInt(val.replace(/\D/g, ''), 10);
+                return isNaN(num) ? -1 : num;
+            }
+            if (val && typeof val === 'object' && val.result !== undefined) {
+                let num = parseInt(String(val.result).replace(/\D/g, ''), 10);
+                return isNaN(num) ? -1 : num;
+            }
+            return -1;
+        }
+
+        function isItogoRow(rowData) {
+            return String(rowData.values[0] || '').toLowerCase().trim().includes('итого');
+        }
+
+        let g1 = [];
+        let g2 = [];
+        let g3 = [];
+
+        for (let rd of dataRows) {
+            if (isItogoRow(rd)) continue;
+
+            let v = getNppValue(rd);
+            if (v >= 200) g2.push(rd);
+            else if (v >= 90 && v < 200) g3.push(rd);
+            else g1.push(rd);
+        }
+
+        let sortedRows = [...g1, ...g2, ...g3];
+
+        const newWorkbook = new ExcelJS.Workbook();
+        const newSheet = newWorkbook.addWorksheet('Эфко');
+
+        const headerLineBreaks = {
+            'Номер рейса': 'Номер \nрейса',
+            'Склад отправитель': 'Склад \nотправитель',
+            'Количество точек выгрузки': 'Количество точек \nвыгрузки',
+            'Количество паллет': 'Количество \nпаллет',
+            'Грузоподъемность автомобиля': 'Грузоподъемность \nавтомобиля',
+            'Количество документов по клиенту': 'Количество документов \nпо клиенту'
+        };
+
+        const headersRow1 = [
+            '№ п/п',
+            'Плановое прибытие под погрузку',
+            '',
+            'Дивизион',
+            'Номер рейса',
+            'Склад отправитель',
+            'Наименование грузополучателя',
+            'Количество точек выгрузки',
+            'Количество паллет',
+            'Грузоподъемность автомобиля',
+            'Количество документов по клиенту',
+            'Дата доставки'
+        ];
+
+        const headersRow2 = [
+            '',
+            'дата',
+            'время',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            ''
+        ];
+
+        const r1 = newSheet.getRow(1);
+        const r2 = newSheet.getRow(2);
+
+        const wrapHeaders = [
+            'Номер рейса',
+            'Склад отправитель',
+            'Количество точек выгрузки',
+            'Количество паллет',
+            'Грузоподъемность автомобиля',
+            'Количество документов по клиенту'
+        ];
+
+        for (let i = 0; i < headersRow1.length; i++) {
+            let cell1 = r1.getCell(i + 1);
+            let cell2 = r2.getCell(i + 1);
+
+            let headerText = headersRow1[i];
+            if (headerLineBreaks[headerText]) headerText = headerLineBreaks[headerText];
+
+            cell1.value = headerText;
+            cell2.value = headersRow2[i];
+
+            let baseFont = { size: 10, bold: false, name: 'Arial' };
+            let baseAlignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+
+            cell1.font = { ...baseFont };
+            cell1.alignment = { ...baseAlignment };
+            cell2.font = { ...baseFont };
+            cell2.alignment = { ...baseAlignment };
+
+            if (headerStyles[i] && headerStyles[i].style1.fill) cell1.fill = headerStyles[i].style1.fill;
+            if (headerStyles[i] && headerStyles[i].style2.fill) cell2.fill = headerStyles[i].style2.fill;
+
+            if (wrapHeaders.includes(headersRow1[i])) {
+                newSheet.mergeCells(1, i + 1, 2, i + 1);
+                cell1.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            } else if (headersRow1[i] !== 'Плановое прибытие под погрузку' && headersRow2[i] === '') {
+                newSheet.mergeCells(1, i + 1, 2, i + 1);
+                cell1.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+            }
+        }
+
+        newSheet.mergeCells(1, 2, 1, 3);
+        r1.getCell(2).alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+
+        if (headerStyles[1] && headerStyles[1].style1.fill) {
+            r1.getCell(2).fill = headerStyles[1].style1.fill;
+        }
+
+        let thinBorder = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+
+        for (let c = 1; c <= headersRow1.length; c++) {
+            newSheet.getCell(1, c).border = thinBorder;
+            newSheet.getCell(2, c).border = thinBorder;
+        }
+
+        let startDataRow = 3;
+        const boldDataCols = [0, 2, 4, 7, 10];
+
+        for (let i = 0; i < sortedRows.length; i++) {
+            let rd = sortedRows[i];
+            let newRow = newSheet.getRow(startDataRow + i);
+            newRow.height = 25;
+
+            for (let c = 0; c < rd.values.length; c++) {
+                let cell = newRow.getCell(c + 1);
+                cell.value = rd.values[c];
+
+                let origStyle = rd.styles[c];
+
+                if (origStyle.fill) cell.fill = origStyle.fill;
+
+                cell.font = origStyle.font ? { ...origStyle.font, size: 8, name: origStyle.font.name || 'Arial' } : { size: 8, name: 'Arial' };
+                cell.alignment = origStyle.alignment ? { ...origStyle.alignment, wrapText: false, vertical: 'middle', horizontal: origStyle.alignment.horizontal || 'center' } : { wrapText: false, vertical: 'middle', horizontal: 'center' };
+                cell.border = origStyle.border || thinBorder;
+
+                if (origStyle.numFmt) cell.numFmt = origStyle.numFmt;
+
+                if (boldDataCols.includes(c)) {
+                    cell.font = { ...(cell.font || {}), size: 12, bold: true, name: 'Arial' };
+                }
+            }
+        }
+
+        function getCellText(cell) {
+            if (!cell || cell.value === null || cell.value === undefined) return '';
+            let v = cell.value;
+            if (typeof v === 'object' && v.result !== undefined) v = v.result;
+            if (v instanceof Date) return dateToDDMMYYYYLocal(v);
+            return String(v);
+        }
+
+        for (let c = 1; c <= headersRow1.length; c++) {
+            let maxLen = 0;
+
+            let headerText = String(newSheet.getCell(1, c).value || '');
+            headerText.split('\n').forEach(line => {
+                maxLen = Math.max(maxLen, line.length);
+            });
+
+            maxLen = Math.max(maxLen, String(newSheet.getCell(2, c).value || '').length);
+
+            for (let r = startDataRow; r < startDataRow + sortedRows.length; r++) {
+                let strVal = getCellText(newSheet.getCell(r, c));
+                if (strVal) maxLen = Math.max(maxLen, strVal.length);
+            }
+
+            let width = Math.min(Math.max(maxLen + 2, 5), 60);
+            newSheet.getColumn(c).width = width;
+        }
+
+        newSheet.getColumn(2).width = 13.7;
+        newSheet.getColumn(3).width = 19.5;
+        newSheet.getColumn(8).width = 14.5;
+        newSheet.getColumn(9).width = 13.5;
+        newSheet.getColumn(10).width = 20.5;
+        newSheet.getColumn(11).width = 18.5;
+
+        const outBuffer = await newWorkbook.xlsx.writeBuffer();
+        const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+
+        const fileNameDate = formatDateValueForFileName(newSheet.getCell('B3').value);
+
+        a.href = url;
+        a.download = `Эфко_Реестр_${fileNameDate}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        efkoStatus.textContent = '✅ Файл успешно сформирован и скачан!';
+        setTimeout(() => { efkoStatus.textContent = ''; }, 4000);
+
+    } catch (err) {
+        console.error(err);
+        alert('Ошибка при обработке файла Эфко: ' + err.message);
+        efkoStatus.textContent = '';
+    }
+}
+
+async function processColgateFromArrayBuffer(inputBuffer) {
+    if (typeof XLSX === 'undefined') {
+        alert('Библиотека XLSX не загружена.');
+        return;
+    }
+
+    hideOutputs();
+    hideEfkoStatus();
+
+    try {
+        const safeInput = toSafeUint8(inputBuffer instanceof Uint8Array ? inputBuffer : new Uint8Array(inputBuffer));
+        let workbook;
+
+        try {
+            workbook = XLSX.read(safeInput, { type: 'array', cellDates: true });
+        } catch (e) {
+            if (typeof ExcelJS === 'undefined') {
+                alert('Не удалось прочитать файл.');
+                return;
+            }
+
+            const excelWorkbook = new ExcelJS.Workbook();
+            await excelWorkbook.xlsx.load(safeInput);
+            const converted = await excelWorkbook.xlsx.writeBuffer();
+            workbook = XLSX.read(new Uint8Array(converted), { type: 'array', cellDates: true });
+        }
+
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!worksheet) {
+            alert('В файле не найдено листов.');
+            return;
+        }
+
+        const rowsFormatted = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false });
+
+        if (!rowsFormatted.length) {
+            alert('Файл пуст.');
+            return;
+        }
+
+        const registryDate = dateInput.value.trim() || '________';
+
+        let headerRowIndex = -1;
+        const colMap = {};
+        const normalizedTargets = colgateTargetHeaders.map(h => normalizeStrErmann(h).toLowerCase());
+        const searchLimit = Math.min(rowsFormatted.length, 5);
+
+        for (let r = 0; r < searchLimit; r++) {
+            const row = rowsFormatted[r] || [];
+            const tempMap = {};
+            let matches = 0;
+
+            row.forEach((cell, colIdx) => {
+                const val = normalizeStrErmann(cell).toLowerCase();
+
+                normalizedTargets.forEach((target, idx) => {
+                    if (tempMap[idx] === undefined && val === target) {
+                        tempMap[idx] = colIdx;
+                        matches++;
+                    }
+                });
+            });
+
+            if (matches >= 3) {
+                headerRowIndex = r;
+                normalizedTargets.forEach((_, idx) => {
+                    colMap[idx] = tempMap[idx] !== undefined ? tempMap[idx] : -1;
+                });
+                break;
+            }
+        }
+
+        if (headerRowIndex === -1) {
+            headerRowIndex = 0;
+            const row = rowsFormatted[0] || [];
+
+            row.forEach((cell, colIdx) => {
+                const val = normalizeStrErmann(cell).toLowerCase();
+
+                normalizedTargets.forEach((target, idx) => {
+                    if (colMap[idx] === undefined && val === target) {
+                        colMap[idx] = colIdx;
+                    }
+                });
+            });
+
+            normalizedTargets.forEach((_, idx) => {
+                if (colMap[idx] === undefined) colMap[idx] = -1;
+            });
+        }
+
+        if (!Object.values(colMap).some(v => v >= 0)) {
+            alert('Не удалось найти нужные столбцы в файле.');
+            return;
+        }
+
+        let dataRows = [];
+
+        for (let r = headerRowIndex + 1; r < rowsFormatted.length; r++) {
+            const row = rowsFormatted[r] || [];
+            let hasData = false;
+            const rowData = [];
+
+            colgateTargetHeaders.forEach((_, idx) => {
+                const colIdx = colMap[idx];
+                let value = '';
+
+                if (colIdx >= 0 && row[colIdx] !== undefined && row[colIdx] !== null) {
+                    value = normalizeStrErmann(row[colIdx]);
+                }
+
+                if (value !== '') hasData = true;
+                rowData.push(value);
+            });
+
+            if (hasData) dataRows.push(rowData);
+        }
+
+        const groupOrder = [];
+        const groupMap = new Map();
+
+        dataRows.forEach(row => {
+            const key = normalizeStrErmann(row[1]);
+
+            if (!groupMap.has(key)) {
+                groupMap.set(key, []);
+                groupOrder.push(key);
+            }
+
+            groupMap.get(key).push(row);
+        });
+
+        dataRows = [];
+        groupOrder.forEach(key => {
+            dataRows.push(...groupMap.get(key));
+        });
+
+        const headerDisplayTexts = colgateTargetHeaders.map(header => {
+            if (colgateWrapHeaders.includes(header)) {
+                return header.split(' ').join('\n');
+            }
+            return header;
+        });
+
+        const noteIdx = 10;
+        const hasNoteContent = dataRows.some(row => normalizeStrErmann(row[noteIdx]) !== '');
+
+        const activeIndices = [];
+        for (let i = 0; i < colgateTargetHeaders.length; i++) {
+            if (i === noteIdx && !hasNoteContent) continue;
+            activeIndices.push(i);
+        }
+
+        const activeHeaderDisplayTexts = activeIndices.map(i => headerDisplayTexts[i]);
+        const activeDataRows = dataRows.map(row => activeIndices.map(i => row[i]));
+
+        const colgateFixedWidths = {
+            3: 10,
+            4: 10,
+            9: 7,
+            10: 7
+        };
+
+        const colgateMinWidths = {
+            1: 25,
+            5: 30
+        };
+
+        const colgateBoldDataCols = [0, 4, 5, 8];
+        const colWidths = [];
+
+        activeIndices.forEach(origIdx => {
+            const originalC = origIdx + 1;
+            let maxLen = 0;
+
+            String(headerDisplayTexts[origIdx]).split('\n').forEach(line => {
+                maxLen = Math.max(maxLen, line.trim().length);
+            });
+
+            dataRows.forEach(row => {
+                let text = String(row[origIdx] || '');
+
+                if (originalC === 9) {
+                    text = text ? `${text} ☐` : '☐';
+                }
+
+                text.split('\n').forEach(line => {
+                    maxLen = Math.max(maxLen, line.trim().length);
+                });
+            });
+
+            let width = Math.ceil(maxLen * 1.06) + 2;
+
+            if (width < 5) width = 5;
+
+            if (colgateMinWidths[originalC] && width < colgateMinWidths[originalC]) {
+                width = colgateMinWidths[originalC];
+            }
+
+            if (width > 120) width = 120;
+
+            if (originalC === 8) {
+                width = Math.max(5, Math.ceil(width / 2));
+            }
+
+            if (colgateFixedWidths[originalC]) {
+                width = colgateFixedWidths[originalC];
+            }
+
+            colWidths.push(width);
+        });
+
+        let palletSum = 0;
+
+        dataRows.forEach(row => {
+            const value = normalizeStrErmann(row[8]).replace(',', '.');
+            const num = parseFloat(value);
+            if (!isNaN(num)) palletSum += num;
+        });
+
+        const palletText = Number.isInteger(palletSum)
+            ? String(palletSum)
+            : palletSum.toFixed(2).replace('.', ',');
+
+        const table = document.getElementById('resultTableColgate');
+        table.innerHTML = '';
+
+        const totalWidth = colWidths.reduce((sum, w) => sum + w, 0) || 1;
+        const colgroup = document.createElement('colgroup');
+
+        colWidths.forEach(width => {
+            const col = document.createElement('col');
+            col.style.width = ((width / totalWidth) * 100).toFixed(2) + '%';
+            colgroup.appendChild(col);
+        });
+
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+
+        activeHeaderDisplayTexts.forEach(text => {
+            const th = document.createElement('th');
+            th.textContent = text;
+            headRow.appendChild(th);
+        });
+
+        thead.appendChild(headRow);
+
+        const tbody = document.createElement('tbody');
+
+        activeDataRows.forEach(rowData => {
+            const tr = document.createElement('tr');
+
+            rowData.forEach((value, pos) => {
+                const origIdx = activeIndices[pos];
+                const td = document.createElement('td');
+                let displayValue = value;
+
+                if (origIdx === 8) {
+                    displayValue = value ? `${value} ☐` : '☐';
+                }
+
+                td.textContent = displayValue;
+
+                if (colgateBoldDataCols.includes(origIdx)) {
+                    td.style.fontWeight = 'bold';
+                }
+
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(colgroup);
+        table.appendChild(thead);
+        table.appendChild(tbody);
+
+        titleColgate.textContent = `Реестр на ${registryDate}`;
+        countersColgate.textContent = `Паллет: ${palletText}`;
+
+        outputColgate.classList.add('visible');
+
+    } catch (err) {
+        console.error(err);
+        alert('Ошибка при обработке файла Колгейт: ' + err.message);
+    }
+}
+</script>
+</body>
+</html>

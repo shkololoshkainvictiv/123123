@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Табель смен</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a;min-height:100vh}
+.container{max-width:960px;margin:0 auto}
+
+.header{
+  text-align:center;
+  margin-bottom:28px;
+  padding:24px 20px;
+  background:linear-gradient(135deg,#e85a1e,#ff6f32 50%,#ff8855);
+  border-radius:16px;
+  box-shadow:8px 12px 28px rgba(200,70,20,.35);
+  position:relative;
+}
+.header-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:56px;
+  height:56px;
+  border-radius:14px;
+  background:rgba(255,255,255,.15);
+  backdrop-filter:blur(4px);
+  margin-bottom:12px;
+  border:1px solid rgba(255,255,255,.2);
+  opacity:0;
+  transform:scale(.5);
+  transition:opacity .6s ease,transform .6s cubic-bezier(.34,1.56,.64,1);
+}
+.header-icon.visible{
+  opacity:1;
+  transform:scale(1)
+}
+.header-icon svg {
+  stroke: white;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  width: 32px;
+  height: 32px;
+}
+.header h1{
+  font-size:25px;
+  color:#fff;
+  font-weight:700;
+  margin:0
+}
+.header .sub{
+  font-size:15px;
+  color:rgba(255,255,255,.7);
+  margin-top:6px
+}
+
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(2deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+.header-icon.visible svg {
+  animation: float 3s ease-in-out infinite;
+}
+
+.back-btn{
+  position:fixed;
+  top:20px;
+  left:20px;
+  width:46px;
+  height:46px;
+  border-radius:12px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:7px 9px 20px rgba(30,30,60,.16);
+  transition:all .25s;
+  z-index:1000;
+  text-decoration:none;
+  border:none;
+  cursor:pointer
+}
+.back-btn:hover{
+  background:rgba(61,90,158,.08);
+  transform:translateY(-2px);
+  box-shadow:9px 12px 26px rgba(30,30,60,.22)
+}
+.back-btn svg{
+  width:24px;
+  height:24px;
+  fill:#3d5a9e
+}
+
+.info-banner{
+  background:#fff;
+  border-radius:14px;
+  padding:14px 18px;
+  margin-bottom:16px;
+  border-left:4px solid #ff6f32;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  box-shadow:4px 6px 12px rgba(30,30,60,.08)
+}
+.info-banner svg{
+  width:24px;
+  height:24px;
+  flex-shrink:0;
+  fill:#ff6f32
+}
+.info-banner p{
+  font-size:14px;
+  line-height:1.5;
+  color:#4a4a65;
+  margin:0
+}
+.info-banner strong{
+  color:#ff6f32
+}
+
+.card{
+  background:#f5f5fa;
+  border-radius:16px;
+  padding:28px;
+  margin-bottom:20px;
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:10px 14px 36px rgba(30,30,60,.18)
+}
+
+.status-container{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:12px 16px;
+  border-radius:12px;
+  background:rgba(44,110,73,.08);
+  margin-top:12px;
+  transition:all 0.2s ease;
+  cursor:pointer
+}
+.status-indicator{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:#2c6e49;
+  box-shadow:0 0 8px rgba(44,110,73,.6);
+  animation:pulse 2s infinite
+}
+.status-text{
+  font-size:14px;
+  font-weight:600;
+  color:#2c6e49
+}
+.status-container:hover{
+  background:rgba(44,110,73,.12)
+}
+.status-container.error{
+  background:rgba(180,40,40,.08)
+}
+.status-container.error .status-indicator{
+  background:#b42828;
+  box-shadow:0 0 8px rgba(180,40,40,.6)
+}
+.status-container.error .status-text{
+  color:#8b2c2c
+}
+
+.ss{margin-top:20px;display:none}
+.sw{position:relative}
+.sw label{
+  display:block;
+  font-size:14px;
+  font-weight:600;
+  margin-bottom:6px;
+  color:#555570;
+  text-transform:uppercase;
+  display:none
+}
+.si{
+  width:100%;
+  padding:12px 18px 12px 42px;
+  border:1.5px solid rgba(0,0,0,.1);
+  border-radius:12px;
+  font-size:16px;
+  background:#fff
+}
+.si:focus{
+  outline:none;
+  border-color:#3d5a9e
+}
+.sw-ic{
+  position:absolute;
+  left:12px;
+  bottom:12px;
+  width:20px;
+  height:20px;
+  fill:#888;
+  pointer-events:none
+}
+.acl{
+  position:absolute;
+  top:100%;
+  left:0;
+  right:0;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:10px;
+  margin-top:4px;
+  max-height:240px;
+  overflow-y:auto;
+  box-shadow:6px 8px 20px rgba(30,30,60,.15);
+  z-index:100;
+  display:none
+}
+.acl.visible{display:block}
+.aci{
+  padding:12px 18px;
+  cursor:pointer;
+  font-size:15px;
+  border-bottom:1px solid rgba(0,0,0,.04)
+}
+.aci:hover,.aci.hl{
+  background:rgba(61,90,158,.08);
+  color:#3d5a9e
+}
+.aci mark{
+  background:rgba(61,90,158,.15);
+  color:#3d5a9e
+}
+.ec{
+  display:none;
+  margin-top:20px;
+  padding:20px;
+  background:linear-gradient(135deg,#fff,#f8f9ff);
+  border-radius:14px;
+  border:1.5px solid rgba(61,90,158,.12)
+}
+.ec.visible{display:block}
+.en{
+  font-size:20px;
+  font-weight:700;
+  color:#3d5a9e;
+  margin-bottom:4px
+}
+.ep{
+  font-size:14px;
+  color:#888;
+  font-weight:500
+}
+.sts{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px;
+  margin-top:16px
+}
+.st{
+  background:#fff;
+  border-radius:12px;
+  padding:16px;
+  text-align:center
+}
+.sv{
+  font-size:28px;
+  font-weight:800;
+  line-height:1
+}
+.sv.d{color:#e85a1e}
+.sv.n{color:#5a5a7a}
+.sv.w{color:#3d5a9e}
+.sv.t{color:#2c6e49}
+.sl{
+  font-size:11px;
+  font-weight:600;
+  color:#888;
+  text-transform:uppercase;
+  margin-top:6px
+}
+.cs{display:none;margin-top:20px}.cs.visible{display:block}
+.ch{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:14px;
+  flex-wrap:wrap;
+  gap:10px
+}
+.cl{
+  display:flex;
+  gap:14px;
+  font-size:12px;
+  color:#666
+}
+.li{
+  display:flex;
+  align-items:center;
+  gap:5px
+}
+.ld{
+  width:14px;
+  height:14px;
+  border-radius:4px
+}
+.ld.d{background:#e85a1e}
+.ld.n{background:#6a6a8a}
+.ld.m{background:linear-gradient(135deg,#e85a1e 50%,#6a6a8a 50%)}
+.ld.s{background:linear-gradient(135deg,#ffd700,#ffaa00)}
+.cw{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+  margin-bottom:4px
+}
+.wd{
+  text-align:center;
+  font-size:11px;
+  font-weight:700;
+  color:#888;
+  text-transform:uppercase;
+  padding:6px 0
+}
+.cg{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px
+}
+.cd{
+  aspect-ratio:1;
+  border-radius:10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  transition:transform .15s
+}
+.cd:hover:not(.empty){
+  transform:scale(1.08);
+  z-index:2;
+  box-shadow:4px 6px 16px rgba(30,30,60,.15)
+}
+.cd.empty{
+  background:transparent;
+  border:none
+}
+.cd.ds{
+  background:#e85a1e;
+  color:#fff
+}
+.cd.ds-light{
+  background:#ff8855;
+  color:#fff
+}
+.cd.ns{
+  background:#6a6a8a;
+  color:#fff
+}
+.cd.ms{color:#fff}
+.cd.ms::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#e85a1e 50%,#6a6a8a 50%);
+  z-index:0
+}
+.cd.ms>*{position:relative;z-index:1}
+.cd.sut{
+  background:linear-gradient(135deg,#ffd700,#ffaa00);
+  color:#3a2800;
+  border-color:#e6a800;
+  box-shadow:0 0 18px rgba(255,215,0,.8),0 0 36px rgba(255,170,0,.5);
+  animation:glow 2s ease-in-out infinite alternate
+}
+.cn{
+  font-size:11px;
+  font-weight:700;
+  line-height:1.1;
+  text-align:center
+}
+.cm{
+  font-size:8px;
+  font-weight:600;
+  opacity:.7;
+  text-transform:lowercase
+}
+.chr{
+  font-size:14px;
+  font-weight:800;
+  margin-top:2px;
+  line-height:1
+}
+.cd.empty .cn{
+  color:#ccc;
+  font-weight:400;
+  font-size:13px
+}
+.cd .tip{
+  display:none;
+  position:absolute;
+  bottom:calc(100% + 8px);
+  left:50%;
+  transform:translateX(-50%);
+  background:#2a2a3a;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:8px;
+  font-size:12px;
+  white-space:nowrap;
+  z-index:10
+}
+.cd .tip::after{
+  content:'';
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  border:5px solid transparent;
+  border-top-color:#2a2a3a
+}
+.cd:hover .tip{display:block}
+.err{
+  padding:14px 18px;
+  background:rgba(180,40,40,.08);
+  border:1px solid rgba(180,40,40,.15);
+  border-radius:10px;
+  color:#8b2c2c;
+  font-size:14px;
+  margin-top:14px;
+  display:none;
+  white-space:pre-wrap
+}
+.err.visible{display:block}
+
+@keyframes pulse{
+  0%{opacity:1}
+  50%{opacity:0.6}
+  100%{opacity:1}
+}
+@keyframes glow{
+  from{box-shadow:0 0 8px rgba(255,215,0,.4),0 0 16px rgba(255,170,0,.2)}
+  to{box-shadow:0 0 18px rgba(255,215,0,.8),0 0 36px rgba(255,170,0,.5)}
+}
+
+@media(max-width:600px){
+  .sts{grid-template-columns:repeat(2,1fr)}
+  .cg{gap:2px}
+  .chr{font-size:11px}
+  .cn{font-size:9px}
+  .cm{font-size:7px}
+  .back-btn{
+    top:15px;
+    left:15px;
+    width:40px;
+    height:40px
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="http://okkam.space" class="back-btn" title="Назад">
+    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+  </a>
+  
+  <div class="header">
+    <div class="header-icon" id="headerIcon">
+      <svg viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    </div>
+    <h1>Табель смен</h1>
+    <div class="sub">Kiberbul'ka — просмотр графика работы</div>
+  </div>
+  
+  <div class="info-banner">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+    <p>Табель <strong>обновляется вручную</strong> (у IT не реализована автоматическая выгрузка табеля), поэтому <strong>шевелите меня</strong> для актуализации информации.</p>
+  </div>
+
+  <div class="card">
+    <div id="loadStatus" class="status-container">
+      <div class="status-indicator"></div>
+      <div class="status-text">Загрузка табеля...</div>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="card ss" id="ss" style="display:none">
+    <h2>🔍 Поиск сотрудника</h2>
+    <div class="sw">
+      <label>Фамилия</label>
+      <svg class="sw-ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input type="text" class="si" id="sinp" placeholder="Начните вводить фамилию..." autocomplete="off">
+      <div class="acl" id="acl"></div>
+    </div>
+    <div class="ec" id="ec"><div class="en" id="enm"></div><div class="ep" id="eps"></div><div class="sts" id="sts"></div></div>
+    <div class="cs" id="cs">
+      <div class="ch">
+        <div style="font-size:16px;font-weight:700;color:#4a4a65" id="ctitle"></div>
+        <div class="cl">
+          <div class="li"><div class="ld d"></div>День</div>
+          <div class="li"><div class="ld n"></div>Ночь</div>
+          <div class="li"><div class="ld m"></div>Смешанная</div>
+          <div class="li"><div class="ld s"></div>Сутки</div>
+        </div>
+      </div>
+      <div class="cw" id="cwk"></div>
+      <div class="cg" id="cgr"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Защита от просмотра кода
+document.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+});
+
+document.onkeydown = function(e) {
+  if (
+    e.key === 'F12' || 
+    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
+    (e.ctrlKey && e.key === 'U')
+  ) {
+    e.preventDefault();
+    return false;
+  }
+};
+
+// Основные переменные и функции
+var G={emps:{},month:0,year:2024,days:0};
+var MONTHS=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+var MONTHS3=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+var MONTHS_GEN=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+var WDAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+let fileLastModified = null;
+let isShowingDate = false;
+
+function $(id){return document.getElementById(id)}
+function showErr(m){$('err').textContent=m;$('err').classList.add('visible')}
+function hideErr(){$('err').classList.remove('visible');$('err').textContent=''}
+
+function parseNum(v){
+  if(v===null||v===undefined||v==='')return 0;
+  var s=String(v).replace(',','.').trim();
+  var n=parseFloat(s);
+  return isNaN(n)?0:n;
+}
+
+function parseMonthInfo(val){
+  if(!val)return null;
+  var s=String(val).toLowerCase().trim();
+  for(var i=0;i<MONTHS.length;i++){
+    if(s.indexOf(MONTHS[i])!==-1){
+      var yMatch=s.match(/20\d{2}/);
+      var y=yMatch?parseInt(yMatch[0]):new Date().getFullYear();
+      return{month:i,year:y};
+    }
+  }
+  return null;
+}
+
+function processWB(wb,file){
+  hideErr();
+  var sheet=null;
+  var sheetNames=wb.SheetNames;
+  if(!sheetNames||sheetNames.length===0){
+    showErr('Файл не содержит листов');return;
+  }
+  sheet=wb.Sheets[sheetNames[0]];
+  if(!sheet){showErr('Лист пуст');return;}
+
+  var rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
+  if(!rows||rows.length<10){showErr('Слишком мало строк: '+(rows?rows.length:0));return;}
+
+  var monthInfo=null;
+  for(var r=0;r<Math.min(15,rows.length);r++){
+    var row=rows[r];
+    if(!row)continue;
+    for(var c=0;c<row.length;c++){
+      var v=row[c];
+      if(v&&String(v).length>2){
+        var mi=parseMonthInfo(v);
+        if(mi){monthInfo=mi;break;}
+      }
+    }
+    if(monthInfo)break;
+  }
+  if(!monthInfo){
+    showErr('Не найден месяц в файле. Проверьте строку 7, столбец 9.');return;
+  }
+  G.month=monthInfo.month;
+  G.year=monthInfo.year;
+
+  var maxCols=0;
+  for(var r=0;r<rows.length;r++){
+    if(rows[r]&&rows[r].length>maxCols)maxCols=rows[r].length;
+  }
+
+  var dayStartCol=19;
+  var colWidth=3;
+  var daysCount=0;
+  for(var c=dayStartCol;c+2<maxCols;c+=colWidth){
+    var hasData=false;
+    for(var r=0;r<rows.length;r++){
+      if(rows[r]&&(parseNum(rows[r][c])>0||parseNum(rows[r][c+1])>0||parseNum(rows[r][c+2])>0)){
+        hasData=true;break;
+      }
+    }
+    if(hasData||c+2<maxCols-2)daysCount++;
+    else break;
+  }
+  if(daysCount===0)daysCount=31;
+  G.days=daysCount;
+
+  var emps={};
+  for(var r=0;r<rows.length;r++){
+    var row=rows[r];
+    if(!row||row.length<dayStartCol+3)continue;
+    var name=String(row[2]||'').trim();
+    if(!name||name.length<2)continue;
+    if(/^[а-яА-ЯёЁa-zA-Z\s\-\.]+$/.test(name)===false)continue;
+    var parts=name.split(/\s+/);
+    if(parts.length<2)continue;
+
+    var key=name.toLowerCase();
+    if(!emps[key]){
+      emps[key]={name:name,position:String(row[14]||'').trim(),days:{}};
+    }
+    var emp=emps[key];
+
+    if(row[3]&&String(row[3]).trim().length>1&&!emp.position){
+      emp.position=String(row[3]).trim();
+    }
+    if(row[4]&&String(row[4]).trim().length>1&&!emp.position){
+      emp.position=String(row[4]).trim();
+    }
+
+    for(var d=0;d<daysCount;d++){
+      var col=dayStartCol+d*colWidth;
+      if(col+2>=row.length&&col>=row.length)continue;
+      var dayH=parseNum(row[col]);
+      var nightH=parseNum(row[col+1])+parseNum(row[col+2]);
+      if(dayH<=0&&nightH<=0)continue;
+      var dayNum=d+1;
+      if(!emp.days[dayNum]){
+        emp.days[dayNum]={d:0,n:0};
+      }
+      emp.days[dayNum].d+=dayH;
+      emp.days[dayNum].n+=nightH;
+    }
+  }
+
+  var count=Object.keys(emps).length;
+  if(count===0){showErr('Не найдено сотрудников. Столбцы: '+maxCols+', строк: '+rows.length);return;}
+
+  G.emps=emps;
+  $('ss').style.display='block';
+  
+  const statusText = $('loadStatus').querySelector('.status-text');
+  statusText.textContent = `Табель загружен ✓`;
+  
+  if(file.lastModified){
+    fileLastModified = new Date(file.lastModified).toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  setTimeout(() => {
+    $('headerIcon').classList.add('visible');
+  }, 3000);
+}
+
+function getShiftType(d,n){
+  if(d>=15&&n>=7)return 'sut';
+  if(d>0&&n>0){
+    if(d<=4)return 'ns';
+    return 'ms';
+  }
+  if(d>0&&n===0){
+    if(d == 11) return 'ds';
+    return 'ds-light';
+  }
+  if(d===0&&n>0)return 'ns';
+  return '';
+}
+
+function renderEmp(emp){
+  $('enm').textContent=emp.name;
+  $('eps').textContent=emp.position||'';
+  var totalD=0,totalN=0,workdays=0;
+  var keys=Object.keys(emp.days);
+  for(var i=0;i<keys.length;i++){
+    var dd=emp.days[keys[i]];
+    totalD+=dd.d;totalN+=dd.n;
+    if(dd.d>0||dd.n>0)workdays++;
+  }
+  var html='';
+  html+='<div class="st"><div class="sv d">'+totalD+'ч</div><div class="sl">Дневные</div></div>';
+  html+='<div class="st"><div class="sv n">'+totalN+'ч</div><div class="sl">Ночные</div></div>';
+  html+='<div class="st"><div class="sv t">'+(totalD+totalN)+'ч</div><div class="sl">Всего</div></div>';
+  html+='<div class="st"><div class="sv w">'+workdays+'</div><div class="sl">Смен</div></div>';
+  $('sts').innerHTML=html;
+
+  $('ctitle').textContent=MONTHS[G.month];
+  
+  var wkHtml='';
+  for(var i=0;i<7;i++)wkHtml+='<div class="wd">'+WDAYS[i]+'</div>';
+  $('cwk').innerHTML=wkHtml;
+
+  var firstDay=new Date(G.year,G.month,1);
+  var startDow=firstDay.getDay();
+  if(startDow===0)startDow=7;
+  startDow--;
+
+  var daysInMonth=new Date(G.year,G.month+1,0).getDate();
+  var gridHtml='';
+
+  for(var i=0;i<startDow;i++){
+    gridHtml+='<div class="cd empty"></div>';
+  }
+
+  for(var d=1;d<=daysInMonth;d++){
+    var dd=emp.days[d];
+    var dayH=dd?dd.d:0;
+    var nightH=dd?dd.n:0;
+    var type=getShiftType(dayH,nightH);
+    var cls='cd';
+    if(type)cls+=' '+type;
+    else cls+=' empty';
+
+    var inner='';
+    var dateObj=new Date(G.year,G.month,d);
+    var dow=dateObj.getDay();
+    if(dow===0)dow=7;
+    var isWeekend=(dow>=6);
+
+    if(type){
+      var hrsStr='';
+      if(dayH>0&&nightH>0)hrsStr=dayH+'/'+nightH+'ч';
+      else if(dayH>0)hrsStr=dayH+'ч';
+      else hrsStr=nightH+'ч';
+      inner='<div class="cn">'+d+' <span class="cm">'+MONTHS3[G.month]+'</span></div>';
+      inner+='<div class="chr">'+hrsStr+'</div>';
+      var tipText='';
+      if(type==='sut')tipText='Сутки: '+dayH+'/'+nightH+'ч';
+      else if(type==='ds'||type==='ds-light')tipText='Дневная: '+dayH+'ч';
+      else if(type==='ns')tipText='Ночная: '+(dayH>0?dayH+'/'+nightH:nightH)+'ч';
+      else if(type==='ms')tipText='Смешанная: '+dayH+'/'+nightH+'ч';
+      inner+='<div class="tip">'+tipText+'</div>';
+    }else{
+      inner='<div class="cn">'+d+'</div>';
+    }
+    gridHtml+='<div class="'+cls+'">'+inner+'</div>';
+  }
+
+  $('cgr').innerHTML=gridHtml;
+  $('ec').classList.add('visible');
+  $('cs').classList.add('visible');
+}
+
+function doSearch(q){
+  var acl = $('acl');
+  
+  if(!q || q.length < 4){
+    acl.classList.remove('visible');
+    acl.innerHTML = '';
+    return;
+  }
+  
+  var ql = q.toLowerCase();
+  var keys = Object.keys(G.emps);
+  var matches = [];
+  
+  for(var i = 0; i < keys.length; i++){
+    var emp = G.emps[keys[i]];
+    if(emp.name.toLowerCase().indexOf(ql) !== -1){
+      matches.push(keys[i]);
+    }
+  }
+  
+  if(matches.length === 0){
+    acl.classList.remove('visible');
+    acl.innerHTML = '';
+    return;
+  }
+  
+  matches.sort();
+  var html = '';
+  
+  for(var i = 0; i < matches.length && i < 20; i++){
+    var emp = G.emps[matches[i]];
+    var nm = emp.name;
+    var idx = nm.toLowerCase().indexOf(ql);
+    
+    var highlighted = nm.substring(0, idx) + 
+      '<mark>' + nm.substring(idx, idx + q.length) + '</mark>' + 
+      nm.substring(idx + q.length);
+    
+    html += '<div class="aci" data-key="' + matches[i] + '">' + highlighted + '</div>';
+  }
+  
+  acl.innerHTML = html;
+  acl.classList.add('visible');
+  
+  var items = acl.querySelectorAll('.aci');
+  for(var i = 0; i < items.length; i++){
+    items[i].addEventListener('click', function(){
+      var key = this.getAttribute('data-key');
+      renderEmp(G.emps[key]);
+      $('sinp').value = '';
+      acl.classList.remove('visible');
+    });
+  }
+}
+
+function autoLoadTabel(){
+  fetch('tabel.xlsx')
+    .then(function(response){
+      if(!response.ok){
+        throw new Error('Файл не найден (статус '+response.status+')');
+      }
+      
+      const lastModified=response.headers.get('Last-Modified');
+      return response.arrayBuffer().then(function(buffer){
+        return{
+          buffer:buffer,
+          lastModified:lastModified
+        };
+      });
+    })
+    .then(function(result){
+      const data=new Uint8Array(result.buffer);
+      const mockFile={
+        name:'tabel.xlsx',
+        size:result.buffer.byteLength,
+        lastModified:result.lastModified?new Date(result.lastModified):new Date()
+      };
+      
+      try{
+        const wb=XLSX.read(data,{type:'array',cellDates:true});
+        processWB(wb,mockFile);
+      }catch(ex){
+        showErr('Ошибка при чтении данных: '+ex.message);
+      }
+    })
+    .catch(function(error){
+      showErr('Ошибка загрузки: '+error.message);
+      $('loadStatus').classList.add('error');
+      $('loadStatus').querySelector('.status-text').textContent='Ошибка загрузки';
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  autoLoadTabel();
+  
+  setTimeout(() => {
+    $('headerIcon').classList.add('visible');
+  }, 3000);
+  
+  $('loadStatus').addEventListener('click', function() {
+    if(fileLastModified && !isShowingDate){
+      isShowingDate = true;
+      const statusText = this.querySelector('.status-text');
+      const originalText = statusText.textContent;
+      statusText.textContent = `Обновлен: ${fileLastModified}`;
+      
+      setTimeout(() => {
+        statusText.textContent = originalText;
+        isShowingDate = false;
+      }, 3000);
+    }
+  });
+  
+  var sinp = $('sinp');
+  sinp.addEventListener('input', function() {
+    doSearch(this.value.trim());
+  });
+  
+  sinp.addEventListener('focus', function() {
+    if(this.value.trim()) {
+      doSearch(this.value.trim());
+    }
+  });
+  
+  document.addEventListener('click', function(e) {
+    if(!e.target.closest('.sw')) {
+      $('acl').classList.remove('visible');
+    }
+  });
+});
+</script>
+</html>

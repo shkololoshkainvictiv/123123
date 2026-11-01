@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Перепак Мултон</title>
+<meta name="theme-color" content="#e85a1e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Перепак">
+<meta name="description" content="Терминал заказа кодов и печати этикеток для перепака Мултон">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bwip-js@4.1.0/dist/bwip-js-min.js"></script>
+<style id="base-print-style">
+@media print{
+  @page{size:56mm 39mm;margin:0;}
+}
+</style>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;color:#2a2a3a;display:flex;flex-direction:column}
+input,textarea{-webkit-user-select:text;user-select:text}
+
+.main{flex:1;display:flex;flex-direction:column;padding:14px;gap:10px;overflow-y:auto}
+
+.header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:linear-gradient(135deg,#e85a1e,#ff6f32);border-radius:12px;box-shadow:4px 6px 16px rgba(200,70,20,.3)}
+.header h1{font-size:17px;color:#fff;font-weight:700}
+.header .subtitle{font-size:11px;color:rgba(255,255,255,.8);margin-top:2px}
+
+.tabs{display:flex;gap:6px;margin-bottom:2px}
+.tab-btn{flex:1;padding:11px 10px;border:1.5px solid rgba(61,90,158,.2);background:#fff;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:#3d5a9e;transition:all .2s;text-align:center;text-transform:uppercase;letter-spacing:.3px}
+.tab-btn:hover{background:rgba(61,90,158,.08)}
+.tab-btn.active{background:#3d5a9e;color:#fff;border-color:#3d5a9e;box-shadow:3px 4px 10px rgba(61,90,158,.25)}
+
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fadeIn .3s ease}
+
+.card{background:#f5f5fa;border-radius:12px;padding:16px;border:1px solid rgba(0,0,0,.06);box-shadow:6px 8px 20px rgba(30,30,60,.15)}
+.card h2{font-size:12px;margin-bottom:12px;color:#4a4a65;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:6px;font-weight:600;text-transform:uppercase}
+
+.fg{margin-bottom:10px}
+.fg:last-child{margin-bottom:0}
+.fg label{display:block;font-size:11px;font-weight:600;margin-bottom:5px;color:#555570;text-transform:uppercase}
+.fg input, .fg textarea{width:100%;padding:12px 14px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:15px;background:#dfe0e8;color:#1a1a2e;box-shadow:3px 4px 10px rgba(30,30,60,.1)}
+.fg textarea{font-family:'Courier New',monospace;font-size:12px;resize:vertical;min-height:70px}
+.fg input:focus, .fg textarea:focus{outline:none;border-color:#3d5a9e;background:#d8d9e4}
+.fg input:disabled{opacity:.5;cursor:not-allowed}
+.fg input.found{border-color:#2c6e49;background:rgba(44,110,73,.08)}
+
+.name-display{background:#fff;border-radius:8px;padding:10px 14px;margin-top:10px;border:1px solid rgba(44,110,73,.2);display:none}
+.name-display.visible{display:block;animation:fadeIn .3s ease}
+.name-display .lbl{font-size:10px;font-weight:700;color:#2c6e49;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.name-display .val{font-size:13px;color:#1a1a2e;line-height:1.4;font-weight:600}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+
+.qty-control{display:flex;align-items:stretch;height:52px}
+.qty-control button{background:#dfe0e8;border:1px solid rgba(0,0,0,.1);color:#2a2a3a;width:56px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;box-shadow:3px 4px 10px rgba(30,30,60,.08)}
+.qty-control button:hover{background:#d0d1dc}
+.qty-control button:active{background:#c0c1cc}
+.qty-control button:first-child{border-right:none;border-radius:8px 0 0 8px}
+.qty-control button:last-child{border-left:none;border-radius:0 8px 8px 0}
+.qty-control input{border-radius:0;text-align:center;font-weight:700;font-family:'Courier New',monospace;font-size:17px;box-shadow:none !important}
+
+.btn-main{width:100%;padding:16px;background:#e85a1e;color:#fff;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:none;border-radius:10px;cursor:pointer;transition:all .25s;box-shadow:5px 7px 18px rgba(232,90,30,.3);margin-top:12px}
+.btn-main:hover{background:#d44f15;transform:translateY(-2px)}
+.btn-main:active{transform:translateY(0)}
+.btn-main:disabled{background:#a0aec0;cursor:not-allowed;transform:none}
+
+.btn-kigu{width:100%;padding:20px;background:#2c6e49;color:#fff;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:none;border-radius:10px;cursor:pointer;transition:all .25s;box-shadow:5px 7px 18px rgba(44,110,73,.3);display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-kigu:hover{background:#235a3a;transform:translateY(-2px)}
+.btn-kigu:active{transform:translateY(0)}
+.btn-kigu:disabled{background:#a0aec0;cursor:not-allowed;transform:none}
+.btn-kigu svg{width:22px;height:22px;fill:#fff}
+
+.recovery-hint{background:rgba(61,90,158,.08);border:1px solid rgba(61,90,158,.15);border-radius:8px;padding:10px 14px;margin-bottom:12px;text-align:center}
+.recovery-hint .hint-text{font-size:11px;color:#3d5a9e;font-weight:600;line-height:1.4}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#2c6e49;color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:all .3s;z-index:1000}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media print{
+  html,body{width:auto!important;height:auto!important;margin:0!important;padding:0!important;background:#fff!important;overflow:hidden!important;}
+  .main {display:none!important;}
+  #pa {display:block!important;position:static!important;width:auto!important;margin:0!important;padding:0!important;gap:0!important;}
+  
+  .lb-wrap {
+    page-break-after:always!important;
+    break-after:page!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid!important;
+    position:relative!important;
+    margin:0!important;
+    padding:0!important;
+    display:block!important;
+  }
+  .lb-wrap:last-of-type {page-break-after:avoid!important;break-after:avoid!important;}
+  
+  .lb {
+    position:relative!important;
+    border:none!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    display:block!important;
+  }
+  
+  .lb.sz-57x57 {
+    width:57mm!important;
+    height:57mm!important;
+  }
+  
+  .lb.sz-56x39 {
+    width:56mm!important;
+    height:39mm!important;
+  }
+  
+  .lb.sz-50x100 {
+    width:100mm!important;
+    height:50mm!important;
+  }
+  
+  .lb-inner {
+    position:absolute!important;
+    left:0!important;
+    top:0!important;
+    width:100%!important;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+  }
+}
+
+.lb{position:relative;background:#fff;border-radius:4px;box-shadow:14px 18px 40px rgba(30,30,60,.28);overflow:hidden;box-sizing:border-box;display:none}
+.lb-inner{width:100%;height:100%;position:relative}
+
+.lb.sz-57x57{width:57mm;height:57mm}
+.lb.sz-57x57 .c128{position:absolute;top:3mm;left:4mm;width:49mm;height:14mm}
+.lb.sz-57x57 .c128 canvas{width:100%!important;height:100%!important}
+.lb.sz-57x57 .c128t{position:absolute;top:17.5mm;left:4mm;width:49mm;text-align:center;font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:#000}
+.lb.sz-57x57 .al{position:absolute;top:23.5mm;left:2.5mm;max-width:29mm;font-family:Arial,sans-serif;font-size:15px;color:#000}
+.lb.sz-57x57 .at{position:absolute;top:28mm;left:2.5mm;max-width:29mm;font-family:Arial,sans-serif;font-size:16.5px;color:#000;word-break:break-all}
+.lb.sz-57x57 .nm{position:absolute;top:34mm;left:2.5mm;max-width:29mm;font-family:Arial,sans-serif;font-size:9px;color:#000;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word}
+.lb.sz-57x57 .lc{position:absolute;bottom:3.5mm;left:1.5mm;width:27mm;height:11.4mm;overflow:hidden}
+.lb.sz-57x57 .lc img{width:100%;height:100%;object-fit:contain;object-position:left bottom;display:block}
+.lb.sz-57x57 .dm{position:absolute;bottom:3mm;right:3mm;width:21mm;height:21mm}
+.lb.sz-57x57 .dm canvas{width:100%!important;height:100%!important}
+
+.lb.sz-56x39{width:56mm;height:39mm}
+.lb.sz-56x39 .c128{position:absolute;top:2mm;left:2mm;width:52mm;height:10mm}
+.lb.sz-56x39 .c128 canvas{width:100%!important;height:100%!important}
+.lb.sz-56x39 .c128t{position:absolute;top:12.5mm;left:2mm;width:52mm;text-align:center;font-family:'Courier New',monospace;font-size:11px;font-weight:700;color:#000}
+.lb.sz-56x39 .al{position:absolute;top:16.5mm;left:2mm;max-width:30mm;font-family:Arial,sans-serif;font-size:9px;color:#000}
+.lb.sz-56x39 .at{position:absolute;top:19.5mm;left:2mm;max-width:30mm;font-family:Arial,sans-serif;font-size:12px;color:#000;font-weight:700;word-break:break-all}
+.lb.sz-56x39 .nm{position:absolute;top:24mm;left:2mm;width:33mm;font-family:Arial,sans-serif;font-size:8px;color:#000;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word}
+.lb.sz-56x39 .lc{position:absolute;bottom:2mm;left:2mm;width:20mm;height:8.5mm;overflow:hidden}
+.lb.sz-56x39 .lc img{width:100%;height:100%;object-fit:contain;object-position:left bottom;display:block}
+.lb.sz-56x39 .dm{position:absolute;bottom:2mm;right:2mm;width:17mm;height:17mm}
+.lb.sz-56x39 .dm canvas{width:100%!important;height:100%!important}
+
+.lb.sz-50x100{width:100mm;height:50mm}
+.lb.sz-50x100 .c128{position:absolute;top:3mm;left:5mm;width:90mm;height:15mm}
+.lb.sz-50x100 .c128 canvas{width:100%!important;height:100%!important}
+.lb.sz-50x100 .c128t{position:absolute;top:18.5mm;left:5mm;width:90mm;text-align:center;font-family:'Courier New',monospace;font-size:14px;font-weight:900;color:#000}
+.lb.sz-50x100 .extra-txt{position:absolute;top:26mm;left:5mm;width:68mm;height:4.5mm;font-family:Arial,sans-serif;color:#000;line-height:1.15;overflow:hidden;word-break:normal;overflow-wrap:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lb.sz-50x100 .art-wrap{position:absolute;bottom:3mm;left:5mm;width:22mm;height:16mm;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.lb.sz-50x100 .al{font-family:Arial,sans-serif;font-size:11px;color:#555;font-weight:600}
+.lb.sz-50x100 .at{font-family:Arial,sans-serif;font-size:15px;color:#000;font-weight:700;word-break:break-all}
+.lb.sz-50x100 .lc{position:absolute;bottom:3mm;left:31.5mm;width:32.5mm;height:16.25mm;overflow:hidden}
+.lb.sz-50x100 .lc img{width:100%;height:100%;object-fit:contain;object-position:left bottom;display:block}
+.lb.sz-50x100 .dm{position:absolute;bottom:3mm;right:4mm;width:21mm;height:21mm}
+.lb.sz-50x100 .dm canvas{width:100%!important;height:100%!important}
+</style>
+</head>
+<body>
+
+<div class="main">
+  <div class="header">
+    <div>
+      <h1>Перепак Мултон</h1>
+      <div class="subtitle">Заказ и восстановление кодов</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab-btn active" data-tab="request" onclick="switchTab('request')">Запрос</div>
+    <div class="tab-btn" data-tab="recovery" onclick="switchTab('recovery')">Восстановление</div>
+  </div>
+
+  <div id="tab-request" class="tab-content active">
+    <div class="card">
+      <h2>Поиск товара</h2>
+      <div class="fg">
+        <label>Артикул или GTIN</label>
+        <input type="text" id="searchInput" placeholder="Введите артикул или GTIN..." readonly autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="none">
+      </div>
+      
+      <div class="name-display" id="nameDisplay">
+        <div class="lbl">Наименование</div>
+        <div class="val" id="nameValue">—</div>
+      </div>
+
+      <div class="fg" style="margin-top:12px">
+        <label>Количество кодов</label>
+        <div class="qty-control">
+          <button type="button" onclick="updateQty(-1, 'qtyInput')">−</button>
+          <input type="text" id="qtyInput" value="" maxlength="5" readonly inputmode="none" placeholder="1">
+          <button type="button" onclick="updateQty(1, 'qtyInput')">+</button>
+        </div>
+      </div>
+
+      <button id="mainBtn" class="btn-main" onclick="startProcess()" disabled>Сформировать</button>
+    </div>
+  </div>
+
+  <div id="tab-recovery" class="tab-content">
+    <div class="card">
+      <h2>Восстановление кода</h2>
+      
+      <div class="recovery-hint">
+        <div class="hint-text">Предварительно скопируйте родительский код для печати</div>
+      </div>
+      
+      <button id="recBtn" class="btn-kigu" onclick="startRecovery()">
+        <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+        Печать КИГУ
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="pa"></div>
+
+<div class="toast" id="toast">Готово!</div>
+
+<script>
+let DATA = [];
+let skuDict = {};
+let gtinDict = {};
+let currentSizeReq = '56x39';
+let currentArticle = '';
+let currentGtin = '';
+let currentName = '';
+let currentBc = '';
+let currentTab = 'request';
+const FILE_URL = 'SKU List_ZFG.xlsx';
+const LOGO = 'https://static.tildacdn.com/tild3533-3834-4361-a636-646263663031/logo.svg';
+
+let activeInput = null;
+
+function requestFullscreen() {
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen().catch(function() {});
+  } else if (elem.webkitRequestFullscreen) {
+    elem.webkitRequestFullscreen();
+  } else if (elem.msRequestFullscreen) {
+    elem.msRequestFullscreen();
+  }
+}
+
+function hideAddressBar() {
+  setTimeout(function() {
+    window.scrollTo(0, 1);
+  }, 100);
+  setTimeout(function() {
+    window.scrollTo(0, 0);
+  }, 300);
+}
+
+let firstInteraction = true;
+function handleFirstInteraction() {
+  if (!firstInteraction) return;
+  firstInteraction = false;
+  requestFullscreen();
+  hideAddressBar();
+  document.removeEventListener('click', handleFirstInteraction);
+  document.removeEventListener('keydown', handleFirstInteraction);
+  document.removeEventListener('touchstart', handleFirstInteraction);
+}
+document.addEventListener('click', handleFirstInteraction);
+document.addEventListener('keydown', handleFirstInteraction);
+document.addEventListener('touchstart', handleFirstInteraction);
+
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'F12') { e.preventDefault(); return false; }
+  if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) { e.preventDefault(); return false; }
+  if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) { e.preventDefault(); return false; }
+  
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (currentTab === 'request') {
+      if (activeInput && activeInput.id === 'searchInput') {
+        activeInput = document.getElementById('qtyInput');
+        activeInput.focus();
+      } else if (activeInput && activeInput.id === 'qtyInput') {
+        startProcess();
+      }
+    }
+    return;
+  }
+  
+  if (!activeInput) return;
+  
+  const isChar = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
+  
+  if (isChar) {
+    e.preventDefault();
+    const input = activeInput;
+    
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const value = input.value;
+    
+    let char = e.key;
+    if (input.id === 'qtyInput' && !/[0-9]/.test(char)) return;
+    
+    const newValue = value.substring(0, start) + char + value.substring(end);
+    
+    const maxLen = parseInt(input.getAttribute('maxlength')) || 100;
+    if (newValue.length > maxLen) return;
+    
+    input.value = newValue;
+    input.selectionStart = input.selectionEnd = start + 1;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  } else if (e.key === 'Backspace') {
+    e.preventDefault();
+    const input = activeInput;
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const value = input.value;
+    
+    if (start === 0 && end === 0) return;
+    
+    const newStart = start === end ? start - 1 : start;
+    const newValue = value.substring(0, newStart) + value.substring(end);
+    input.value = newValue;
+    input.selectionStart = input.selectionEnd = newStart;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  } else if (e.key === 'Delete') {
+    e.preventDefault();
+    const input = activeInput;
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const value = input.value;
+    
+    if (start === end && start >= value.length) return;
+    
+    const newStart = start === end ? start + 1 : start;
+    const newValue = value.substring(0, start) + value.substring(newStart);
+    input.value = newValue;
+    input.selectionStart = input.selectionEnd = start;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    if (activeInput.id === 'searchInput') {
+      activeInput = document.getElementById('qtyInput');
+      activeInput.focus();
+    } else {
+      activeInput = document.getElementById('searchInput');
+      activeInput.focus();
+    }
+  }
+});
+
+document.addEventListener('click', function(e) {
+  if (e.target.matches('input[readonly]') || e.target.matches('textarea[readonly]')) {
+    activeInput = e.target;
+    e.target.focus();
+  } else if (e.target.matches('button') || e.target.matches('.tab-btn')) {
+    activeInput = null;
+  }
+});
+
+function normalizeBc(bc) {
+  return String(bc || '').replace(/[^\d]/g, '').trim();
+}
+
+function normalizeArt(art) {
+  return String(art || '').trim().toLowerCase();
+}
+
+async function loadDatabase() {
+  try {
+    const response = await fetch(FILE_URL);
+    const arrayBuffer = await response.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+    DATA = jsonData.slice(1);
+
+    const tempSkuMap = {};
+    const tempGtinMap = {};
+    
+    for (let i = 0; i < DATA.length; i++) {
+      const row = DATA[i];
+      if (!row) continue;
+      
+      const activeVal = String(row[0] || '').trim().toUpperCase();
+      const artVal = String(row[4] || '').trim();
+      const bcVal = normalizeBc(row[30]);
+      const nameVal = String(row[22] || '').trim();
+      
+      if (!artVal || !bcVal) continue;
+      
+      const artKey = normalizeArt(artVal);
+      
+      if (!tempSkuMap[artKey]) tempSkuMap[artKey] = [];
+      tempSkuMap[artKey].push({ active: activeVal, bc: bcVal, name: nameVal, art: artVal });
+      
+      if (!tempGtinMap[bcVal]) tempGtinMap[bcVal] = [];
+      tempGtinMap[bcVal].push({ active: activeVal, bc: bcVal, name: nameVal, art: artVal });
+    }
+    
+    for (let key in tempSkuMap) {
+      const list = tempSkuMap[key];
+      let selected = null;
+      
+      if (list.length === 1) {
+        selected = list[0];
+      } else {
+        const activeMatches = list.filter(item => item.active === 'ACTIVE');
+        selected = activeMatches.length > 0 ? activeMatches[0] : list[0];
+      }
+      
+      skuDict[key] = { bc: selected.bc, name: selected.name, art: selected.art };
+    }
+    
+    for (let key in tempGtinMap) {
+      const list = tempGtinMap[key];
+      let selected = null;
+      
+      if (list.length === 1) {
+        selected = list[0];
+      } else {
+        const activeMatches = list.filter(item => item.active === 'ACTIVE');
+        selected = activeMatches.length > 0 ? activeMatches[0] : list[0];
+      }
+      
+      gtinDict[key] = { art: selected.art, name: selected.name, bc: selected.bc };
+      
+      const stripped = key.replace(/^0+/, '');
+      if (stripped !== key) {
+        gtinDict[stripped] = { art: selected.art, name: selected.name, bc: selected.bc };
+      }
+    }
+    
+    document.getElementById('searchInput').disabled = false;
+    document.getElementById('searchInput').focus();
+    activeInput = document.getElementById('searchInput');
+  } catch (err) {
+    console.error('Ошибка загрузки базы:', err);
+    alert('Ошибка загрузки базы данных');
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  
+  if (tab === 'request') {
+    activeInput = document.getElementById('searchInput');
+    document.getElementById('searchInput').focus();
+  } else {
+    activeInput = null;
+  }
+}
+
+document.getElementById('searchInput').addEventListener('focus', function() {
+  activeInput = this;
+});
+
+document.getElementById('qtyInput').addEventListener('focus', function() {
+  activeInput = this;
+});
+
+function findItem(query) {
+  if (!query) return null;
+  
+  const artKey = normalizeArt(query);
+  if (skuDict[artKey]) {
+    return { type: 'art', data: skuDict[artKey] };
+  }
+  
+  const cleanQuery = query.replace(/[^\d]/g, '');
+  if (cleanQuery) {
+    if (gtinDict[cleanQuery]) {
+      return { type: 'gtin', data: gtinDict[cleanQuery] };
+    }
+    
+    const stripped = cleanQuery.replace(/^0+/, '');
+    if (stripped && gtinDict[stripped]) {
+      return { type: 'gtin', data: gtinDict[stripped] };
+    }
+    
+    const withZero = '0' + cleanQuery;
+    if (gtinDict[withZero]) {
+      return { type: 'gtin', data: gtinDict[withZero] };
+    }
+  }
+  
+  return null;
+}
+
+document.getElementById('searchInput').addEventListener('input', function(e) {
+  const query = this.value.trim();
+  const nameDisplay = document.getElementById('nameDisplay');
+  const nameValue = document.getElementById('nameValue');
+  const mainBtn = document.getElementById('mainBtn');
+  
+  if (!query) {
+    nameDisplay.classList.remove('visible');
+    mainBtn.disabled = true;
+    this.classList.remove('found');
+    currentArticle = '';
+    currentGtin = '';
+    currentName = '';
+    currentBc = '';
+    return;
+  }
+  
+  const result = findItem(query);
+  
+  if (result) {
+    currentArticle = result.data.art;
+    currentBc = result.data.bc;
+    currentGtin = '0' + result.data.bc;
+    currentName = result.data.name;
+    
+    nameValue.textContent = currentName || '—';
+    nameDisplay.classList.add('visible');
+    mainBtn.disabled = false;
+    this.classList.add('found');
+  } else {
+    nameDisplay.classList.remove('visible');
+    mainBtn.disabled = true;
+    this.classList.remove('found');
+    currentArticle = '';
+    currentGtin = '';
+    currentName = '';
+    currentBc = '';
+  }
+});
+
+function parseMarkingCode(raw) {
+  if (!raw) return null;
+  const code = String(raw).trim();
+  if (!code) return null;
+  
+  let gtin = null;
+  
+  if (code.startsWith('010') && code.length >= 16) {
+    const after010 = code.substring(3);
+    const digitsMatch = after010.match(/^(\d{13})/);
+    if (digitsMatch) {
+      const digits = digitsMatch[1];
+      const afterDigits = after010.substring(13, 16);
+      if (afterDigits === '215') {
+        gtin = '0' + digits;
+      }
+    }
+  }
+  
+  if (!gtin) {
+    const idx = code.indexOf('215');
+    if (idx >= 13) {
+      const potential = code.substring(idx - 13, idx);
+      if (/^\d{13}$/.test(potential)) {
+        gtin = '0' + potential;
+      }
+    }
+  }
+  
+  if (!gtin) {
+    const digitsOnly = code.replace(/[^\d]/g, '');
+    if (digitsOnly.length >= 13) {
+      const first13 = digitsOnly.substring(0, 13);
+      gtin = '0' + first13;
+    }
+  }
+  
+  const dmCode = code + '?93dGVz';
+  
+  return { gtin, dmCode, originalCode: code };
+}
+
+function findItemByGtin(gtin) {
+  if (!gtin) return null;
+  const cleanGtin = gtin.replace(/[^\d]/g, '');
+  
+  if (gtinDict[cleanGtin]) return gtinDict[cleanGtin];
+  
+  const stripped = cleanGtin.replace(/^0+/, '');
+  if (gtinDict[stripped]) return gtinDict[stripped];
+  
+  const withZero = '0' + cleanGtin;
+  if (gtinDict[withZero]) return gtinDict[withZero];
+  
+  return null;
+}
+
+document.getElementById('qtyInput').addEventListener('input', function(e) {
+  this.value = this.value.replace(/[^0-9]/g, '').slice(0, 5);
+});
+
+function updateQty(change, inputId) {
+  const input = document.getElementById(inputId);
+  let val = parseInt(input.value, 10) || 0;
+  val += change;
+  if (val < 1) val = 1;
+  if (val > 99999) val = 99999;
+  input.value = val;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+async function reserveCodes(gtin, qty) {
+  const res = await fetch('api.php?action=reserve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gtin: gtin, count: qty })
+  });
+  
+  const data = await res.json();
+  
+  if (data.error) {
+    const err = new Error(data.error);
+    if (data.error.includes('401')) {
+      err.code = 401;
+    }
+    throw err;
+  }
+  
+  return data;
+}
+
+async function startProcess() {
+  const qtyVal = document.getElementById('qtyInput').value.trim();
+  const qty = parseInt(qtyVal, 10) || 1;
+  
+  if (!currentGtin) {
+    alert('Введите артикул или GTIN');
+    return;
+  }
+  
+  if (qty <= 0) {
+    alert('Укажите корректное количество');
+    return;
+  }
+  
+  const btn = document.getElementById('mainBtn');
+  btn.disabled = true;
+  activeInput = null;
+  
+  try {
+    let dataReserve;
+    try {
+      dataReserve = await reserveCodes(currentGtin, qty);
+    } catch (reserveErr) {
+      if (reserveErr.code === 401) {
+        dataReserve = await reserveCodes(currentGtin, qty);
+      } else {
+        throw reserveErr;
+      }
+    }
+    
+    const reqId = dataReserve.reserveId || dataReserve.request_id;
+    if (!reqId) throw new Error('Сервер не вернул ID бронирования');
+    
+    const resExport = await fetch('api.php?action=export&reserveId=' + reqId);
+    if (!resExport.ok) throw new Error('Ошибка скачивания файла');
+    
+    const arrayBuffer = await resExport.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+    
+    const codes = [];
+    for (let i = 1; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      if (row && row.length >= 3 && row[2] !== '' && row[2] != null) {
+        codes.push(String(row[2]).trim());
+      }
+    }
+    
+    if (codes.length === 0) throw new Error('В файле не найдено кодов');
+    
+    await generateLabels(currentBc, currentArticle, codes, currentName, currentSizeReq);
+    
+    const resReceive = await fetch('api.php?action=receive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reserveId: reqId })
+    });
+    
+    const dataReceive = await resReceive.json();
+    if (dataReceive.error) throw new Error(dataReceive.error);
+    
+    setTimeout(() => {
+      window.print();
+      showToast('Печать завершена');
+      
+      setTimeout(() => {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('qtyInput').value = '';
+        document.getElementById('nameDisplay').classList.remove('visible');
+        document.getElementById('searchInput').classList.remove('found');
+        document.getElementById('pa').innerHTML = '';
+        btn.disabled = false;
+        currentArticle = '';
+        currentGtin = '';
+        currentName = '';
+        currentBc = '';
+        activeInput = document.getElementById('searchInput');
+        document.getElementById('searchInput').focus();
+      }, 500);
+    }, 300);
+    
+  } catch (err) {
+    alert('Ошибка: ' + err.message);
+    btn.disabled = false;
+    activeInput = document.getElementById('searchInput');
+  }
+}
+
+async function startRecovery() {
+  const btn = document.getElementById('recBtn');
+  btn.disabled = true;
+  
+  try {
+    let text = '';
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      text = await navigator.clipboard.readText();
+    } else {
+      alert('Буфер обмена недоступен в этом браузере');
+      btn.disabled = false;
+      return;
+    }
+    
+    if (!text || !text.trim()) {
+      alert('Буфер обмена пуст');
+      btn.disabled = false;
+      return;
+    }
+    
+    const parsed = parseMarkingCode(text.trim());
+    
+    if (!parsed || !parsed.gtin) {
+      alert('Не удалось распознать код маркировки');
+      btn.disabled = false;
+      return;
+    }
+    
+    const item = findItemByGtin(parsed.gtin);
+    
+    if (!item) {
+      alert('Товар не найден в базе данных');
+      btn.disabled = false;
+      return;
+    }
+    
+    const bc = parsed.gtin.substring(1);
+    const art = item.art;
+    const name = item.name;
+    const dmCode = parsed.dmCode;
+    
+    await generateLabels(bc, art, [dmCode], name, '56x39');
+    
+    setTimeout(() => {
+      window.print();
+      showToast('Печать завершена');
+      
+      setTimeout(() => {
+        document.getElementById('pa').innerHTML = '';
+        btn.disabled = false;
+      }, 500);
+    }, 300);
+    
+  } catch (err) {
+    alert('Ошибка: ' + err.message);
+    btn.disabled = false;
+  }
+}
+
+function processDM(raw) {
+  if (!raw) return '';
+  let s = String(raw).trim();
+  s = s.split('?93').join('\x1D93');
+  if (s.charAt(0) !== '\x1D') s = '\x1D' + s;
+  return s;
+}
+
+function renderC128(canvas, text) {
+  if (!text) return Promise.resolve(false);
+  return new Promise(function(resolve) {
+    try {
+      bwipjs.toCanvas(canvas, { bcid: 'code128', text: text, scale: 2, height: 28, includetext: false, backgroundcolor: 'FFFFFF' });
+      resolve(true);
+    } catch (e) { resolve(false); }
+  });
+}
+
+function renderDM(canvas, text) {
+  if (!text) return Promise.resolve(false);
+  return new Promise(function(resolve) {
+    try {
+      bwipjs.toCanvas(canvas, { bcid: 'datamatrix', text: text, scale: 3, parsefnc: false, backgroundcolor: 'FFFFFF' });
+      resolve(true);
+    } catch (e) { resolve(false); }
+  });
+}
+
+async function generateLabels(bc, art, codes, nameText, size) {
+  const pa = document.getElementById('pa');
+  pa.innerHTML = '';
+  
+  const printStyle = document.getElementById('base-print-style');
+  if (size === '50x100') {
+    printStyle.textContent = '@media print { @page { size: 100mm 50mm; margin: 0; } }';
+  } else if (size === '57x57') {
+    printStyle.textContent = '@media print { @page { size: 57mm 57mm; margin: 0; } }';
+  } else {
+    printStyle.textContent = '@media print { @page { size: 56mm 39mm; margin: 0; } }';
+  }
+  
+  const dmList = codes.map(processDM);
+  const count = dmList.length;
+  
+  for (let i = 0; i < count; i++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'lb-wrap';
+    
+    const lb = document.createElement('div');
+    lb.className = 'lb sz-' + size;
+    lb.style.display = 'block';
+    
+    const inner = document.createElement('div');
+    inner.className = 'lb-inner';
+    lb.appendChild(inner);
+    
+    const c128 = document.createElement('div');
+    c128.className = 'c128';
+    const c128c = document.createElement('canvas');
+    c128.appendChild(c128c);
+    inner.appendChild(c128);
+    
+    const c128t = document.createElement('div');
+    c128t.className = 'c128t';
+    c128t.textContent = bc || '';
+    inner.appendChild(c128t);
+    
+    if (size === '50x100') {
+      if (nameText) {
+        const et = document.createElement('div');
+        et.className = 'extra-txt';
+        et.textContent = nameText;
+        inner.appendChild(et);
+        
+        let fs = 10;
+        et.style.fontSize = fs + 'px';
+        while (fs > 7 && (et.scrollHeight > et.clientHeight || et.offsetHeight > 18)) {
+          fs--;
+          et.style.fontSize = fs + 'px';
+        }
+      }
+      
+      if (art) {
+        const artWrap = document.createElement('div');
+        artWrap.className = 'art-wrap';
+        
+        const al = document.createElement('div');
+        al.className = 'al';
+        al.textContent = 'Артикул:';
+        artWrap.appendChild(al);
+        
+        const at = document.createElement('div');
+        at.className = 'at';
+        at.textContent = art;
+        artWrap.appendChild(at);
+        
+        inner.appendChild(artWrap);
+      }
+    } else {
+      if (art) {
+        const al = document.createElement('div');
+        al.className = 'al';
+        al.textContent = 'Артикул:';
+        inner.appendChild(al);
+        
+        const at = document.createElement('div');
+        at.className = 'at';
+        at.textContent = art;
+        inner.appendChild(at);
+      }
+      
+      if (nameText) {
+        const nm = document.createElement('div');
+        nm.className = 'nm';
+        nm.textContent = nameText;
+        inner.appendChild(nm);
+      }
+    }
+    
+    const lc = document.createElement('div');
+    lc.className = 'lc';
+    const logoImg = document.createElement('img');
+    logoImg.src = LOGO;
+    logoImg.alt = 'МУЛТОН';
+    lc.appendChild(logoImg);
+    inner.appendChild(lc);
+    
+    const dm = document.createElement('div');
+    dm.className = 'dm';
+    const dmc = document.createElement('canvas');
+    dm.appendChild(dmc);
+    inner.appendChild(dm);
+    
+    wrap.appendChild(lb);
+    pa.appendChild(wrap);
+    
+    await Promise.all([
+      renderC128(c128c, bc),
+      renderDM(dmc, dmList[i])
+    ]);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadDatabase();
+  requestFullscreen();
+  hideAddressBar();
+  
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function() {});
+  }
+});
+
+window.addEventListener('load', function() {
+  hideAddressBar();
+});
+
+window.addEventListener('resize', function() {
+  hideAddressBar();
+});
+</script>
+</body>
+</html>

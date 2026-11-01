@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Печать внутренних документов</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow-y:scroll}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:4px}
+::-webkit-scrollbar-thumb{background:rgba(61,90,158,.35);border-radius:4px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a;-webkit-user-select:none;user-select:none}
+.container{max-width:900px;margin:0 auto;position:relative}
+.back-btn{position:fixed;top:20px;left:20px;width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:7px 9px 20px rgba(30,30,60,.16);transition:all .25s;z-index:1000;text-decoration:none;border:none;cursor:pointer}
+.back-btn:hover{background:rgba(61,90,158,.08);transform:translateY(-2px);box-shadow:9px 12px 26px rgba(30,30,60,.22)}
+.back-btn svg{width:24px;height:24px;fill:#3d5a9e}
+.header{text-align:center;margin-bottom:28px;padding:24px 20px;background:linear-gradient(135deg,#e85a1e 0%,#ff6f32 50%,#ff8855 100%);border-radius:16px;box-shadow:14px 18px 44px rgba(200,70,20,.35)}
+.header-icon{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,.15);margin-bottom:12px;border:1px solid rgba(255,255,255,.2);opacity:0;transform:scale(.5);transition:opacity .8s ease,transform .8s cubic-bezier(.34,1.56,.64,1)}
+.header-icon.visible{opacity:1;transform:scale(1);animation:floatGlow 3s ease-in-out infinite}
+.header-icon svg{width:30px;height:30px;stroke:#fff;stroke-width:1.5;fill:none}
+@keyframes floatGlow{
+0%,100%{transform:scale(1) translateY(0);box-shadow:0 0 8px rgba(255,255,255,.2),0 4px 12px rgba(0,0,0,.15)}
+50%{transform:scale(1) translateY(-6px);box-shadow:0 0 18px rgba(255,255,255,.45),0 8px 20px rgba(0,0,0,.2)}
+}
+.header h1{font-size:22px;color:#fff;font-weight:700}
+.header .subtitle{font-size:13px;color:rgba(255,255,255,.8);margin-top:6px}
+.card{background:#f5f5fa;border-radius:16px;padding:28px;margin-bottom:20px;border:1px solid rgba(0,0,0,.06);box-shadow:14px 18px 44px rgba(30,30,60,.2)}
+.card h2{font-size:15px;margin-bottom:18px;color:#4a4a65;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px;font-weight:600;text-transform:uppercase}
+.columns-container{display:flex;gap:20px;justify-content:space-between}
+.docs-column{display:flex;flex-direction:column;align-items:center;gap:16px;width:48%}
+.column-title{font-size:14px;color:#3d5a9e;font-weight:600;margin-bottom:8px;text-align:center;width:100%}
+.doc-item{background:#dfe0e8;border-radius:12px;padding:20px;width:100%;box-shadow:6px 8px 18px rgba(30,30,60,.12);border:1px solid rgba(0,0,0,.05);transition:all .25s}
+.doc-item:hover{transform:translateY(-2px);box-shadow:8px 10px 22px rgba(30,30,60,.16)}
+.doc-info{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.doc-icon{width:42px;height:42px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:4px 6px 12px rgba(30,30,60,.1);flex-shrink:0;font-weight:800;font-size:11px}
+.doc-icon.excel{color:#2c6e49}
+.doc-icon.word{color:#2b579a}
+.doc-details h3{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px}
+.doc-details p{font-size:12px;color:#6b6c80}
+.doc-actions{display:flex;gap:8px}
+.btn-pr{flex:1;height:42px;padding:0 14px;border-radius:10px;border:none;background:#2c6e49;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:5px 7px 16px rgba(44,110,73,.3);transition:all .25s}
+.btn-pr:hover:not(:disabled){background:#358a5a;transform:translateY(-1px)}
+.btn-pr:disabled{background:#8c9aa0;cursor:not-allowed;box-shadow:none}
+.btn-down{width:42px;height:42px;border-radius:10px;background:#fff;border:1px solid rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;transition:all .2s;flex-shrink:0}
+.btn-down:hover{background:#edf0f7}
+.btn-down svg{width:18px;height:18px;fill:#4a4a65}
+#statusBanner{margin-top:14px;font-size:13px;color:#3d5a9e;font-weight:600;display:none;text-align:center}
+.disabled-item{opacity:0.6;filter:grayscale(0.8)}
+.disabled-text{color:#999;font-style:italic}
+.pominutki-doc{position:relative;overflow:hidden}
+.pominutki-doc::before{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 60px 60px 0;border-color:transparent #e85a1e transparent transparent;transition:all 0.3s}
+.pominutki-doc.night::before{border-color:transparent #6a6a8a transparent transparent}
+.pominutki-doc:hover::before{border-width:0 68px 68px 0}
+</style>
+</head>
+<body>
+
+<a href="http://okkam.space" class="back-btn" title="Назад">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon" id="headerIcon">
+      <svg viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8v2H8z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 11h8v2H8z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 15h6v2H8z"/>
+      </svg>
+    </div>
+    <h1>Внутренние документы</h1>
+    <div class="subtitle">Быстрая печать бланков</div>
+  </div>
+
+  <div class="card">
+    <h2>Поминутки</h2>
+    <div class="columns-container">
+      <div class="docs-column">
+        <div class="column-title">12 склад</div>
+        
+        <div class="doc-item pominutki-doc">
+          <div class="doc-info">
+            <div class="doc-icon excel">XLSX</div>
+            <div class="doc-details">
+              <h3>День</h3>
+              <p>Поминутка дневной смены</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" onclick="printDocument('12day.pdf', this)">
+              🖨️ Печать
+            </button>
+            <a class="btn-down" href="12day.xlsx" download title="Скачать XLSX">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </a>
+          </div>
+        </div>
+        
+        <div class="doc-item pominutki-doc night">
+          <div class="doc-info">
+            <div class="doc-icon excel">XLSX</div>
+            <div class="doc-details">
+              <h3>Ночь</h3>
+              <p>Поминутка ночной смены</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" onclick="printDocument('12night.pdf', this)">
+              🖨️ Печать
+            </button>
+            <a class="btn-down" href="12night.xlsx" download title="Скачать XLSX">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="docs-column">
+        <div class="column-title">11 склад</div>
+        
+        <div class="doc-item pominutki-doc">
+          <div class="doc-info">
+            <div class="doc-icon excel">XLSX</div>
+            <div class="doc-details">
+              <h3>День</h3>
+              <p>Поминутка дневной смены</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" onclick="printDocument('11day.pdf', this)">
+              🖨️ Печать
+            </button>
+            <a class="btn-down" href="11day.xlsx" download title="Скачать XLSX">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </a>
+          </div>
+        </div>
+        
+        <div class="doc-item pominutki-doc night">
+          <div class="doc-info">
+            <div class="doc-icon excel">XLSX</div>
+            <div class="doc-details">
+              <h3>Ночь</h3>
+              <p>Поминутка ночной смены</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" onclick="printDocument('11night.pdf', this)">
+              🖨️ Печать
+            </button>
+            <a class="btn-down" href="11night.xlsx" download title="Скачать XLSX">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Табель смен</h2>
+    <div class="columns-container">
+      <div class="docs-column">
+        <div class="column-title">12 склад</div>
+        <div class="doc-item">
+          <div class="doc-info">
+            <div class="doc-icon excel">XLSX</div>
+            <div class="doc-details">
+              <h3>Табель</h3>
+              <p>Табель учета рабочего времени</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" onclick="printDocument('tabel12.pdf', this)">
+              🖨️ Печать
+            </button>
+            <a class="btn-down" href="tabel12.xlsx" download title="Скачать XLSX">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="docs-column">
+        <div class="column-title">11 склад</div>
+        <div class="doc-item disabled-item">
+          <div class="doc-info">
+            <div class="doc-icon excel">XLSX</div>
+            <div class="doc-details">
+              <h3>Табель</h3>
+              <p class="disabled-text">Файл отсутствует</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" disabled>🚫 Недоступно</button>
+            <button class="btn-down" disabled>
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Общие документы</h2>
+    <div class="columns-container">
+      <div class="docs-column">
+        <div class="doc-item">
+          <div class="doc-info">
+            <div class="doc-icon word">DOC</div>
+            <div class="doc-details">
+              <h3>Заявление</h3>
+              <p>Чистый бланк</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" onclick="printDocument('zayav.pdf', this)">
+              🖨️ Печать
+            </button>
+            <a class="btn-down" href="zayav.doc" download title="Скачать DOC">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="docs-column">
+        <div class="doc-item">
+          <div class="doc-info">
+            <div class="doc-icon word">DOC</div>
+            <div class="doc-details">
+              <h3>Объяснительная</h3>
+              <p>Шаблон объяснительной записки</p>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-pr" onclick="printDocument('obyas.pdf', this)">
+              🖨️ Печать
+            </button>
+            <a class="btn-down" href="obyas.doc" download title="Скачать DOC">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusBanner"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var icon = document.getElementById('headerIcon');
+    if(icon) icon.classList.add('visible');
+  }, 400);
+});
+
+function printDocument(fileUrl, btnElement) {
+  var originalText = btnElement.innerHTML;
+  var statusBanner = document.getElementById('statusBanner');
+
+  btnElement.disabled = true;
+  btnElement.innerHTML = '⏳ Подготовка...';
+  statusBanner.style.display = 'block';
+  statusBanner.textContent = 'Отправка на печать...';
+
+  var frame = document.createElement('iframe');
+  frame.style.display = 'none';
+  frame.src = fileUrl;
+  document.body.appendChild(frame);
+
+  setTimeout(function() {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch(e) {}
+
+    statusBanner.style.display = 'none';
+    btnElement.disabled = false;
+    btnElement.innerHTML = originalText;
+
+    setTimeout(function() {
+      if(document.body.contains(frame)) {
+        document.body.removeChild(frame);
+      }
+    }, 4000);
+  }, 1200);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Проверка проблемных марок</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+<script>document.write('<script src="common.js?ts=' + Date.now() + '"><\/script>');</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e4e5eb; color: #2a2a3a; padding: 16px; padding-bottom: 90px; }
+.wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.header { padding: 14px 20px; background: linear-gradient(135deg, #e85a1e, #ff6f32 50%, #ff8855); border-radius: 16px; box-shadow: 8px 12px 28px rgba(200,70,20,.3); color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.header h1 { font-size: 21px; font-weight: 700; }
+.header .sub { font-size: 12px; opacity: .9; font-weight: 600; margin-top: 2px; }
+.card { background: #fff; border-radius: 16px; padding: 16px; border: 1px solid rgba(0,0,0,.05); box-shadow: 0 4px 18px rgba(30,30,60,.04); }
+button { font-family: inherit; cursor: pointer; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.btn { padding: 10px 16px; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; color: #334155; font-weight: 800; font-size: 13px; }
+.btn:not(:disabled):hover { border-color: #e85a1e; color: #e85a1e; }
+.btn-primary { background: linear-gradient(135deg, #e85a1e, #ff8855); border: none; color: #fff; box-shadow: 0 4px 12px rgba(232,90,30,.28); }
+.btn-primary:not(:disabled):hover { color: #fff; }
+.btn-danger { border-color: #fecaca; color: #b91c1c; background: #fff5f5; }
+.btn-danger:not(:disabled):hover { border-color: #ef4444; color: #ef4444; }
+.header .btn { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.4); color: #fff; }
+
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab { padding: 10px 14px; border-radius: 12px; border: 2px solid #cbd5e1; background: #f8fafc; font-weight: 800; font-size: 13px; color: #334155; display: flex; gap: 8px; align-items: center; }
+.tab.active { border-color: #e85a1e; background: #fff3e0; color: #e85a1e; }
+.tab .cnt { background: #e2e8f0; color: #334155; border-radius: 999px; padding: 1px 8px; font-size: 12px; }
+.tab.active .cnt { background: #e85a1e; color: #fff; }
+.tab .sel { color: #047857; font-size: 12px; }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar input[type=text] { flex: 1; min-width: 180px; padding: 10px 12px; border: 2px solid #cbd5e1; border-radius: 10px; font-size: 14px; font-weight: 600; outline: none; }
+.toolbar input[type=text]:focus { border-color: #e85a1e; }
+.status { font-size: 12px; color: #64748b; font-weight: 600; }
+.status.err { color: #b91c1c; }
+
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #64748b; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; background: #fff; }
+td { padding: 8px 10px; border-bottom: 1px solid #eef2f7; }
+td.mono { font-family: 'SF Mono', Consolas, monospace; font-weight: 700; word-break: break-all; }
+tr.sel td { background: #ecfdf5; }
+tr.pallet td { background: #eff6ff; }
+tr.pallet.sel td { background: #d1fae5; }
+tr.nested td:nth-child(3) { color: #94a3b8; }
+input[type=checkbox] { width: 18px; height: 18px; accent-color: #e85a1e; cursor: pointer; }
+.badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; border: 1px solid; white-space: nowrap; }
+.b-KITY { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+.b-KI { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+.b-KIGU { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
+.b-UNK { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.art { font-family: 'SF Mono', Consolas, monospace; font-weight: 700; white-space: nowrap; }
+.nm { min-width: 220px; max-width: 420px; }
+.chk { display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 700; color: #475569; cursor: pointer; }
+.empty { padding: 30px; text-align: center; color: #94a3b8; font-weight: 600; border: 2px dashed #cbd5e1; border-radius: 12px; margin-top: 12px; }
+
+.bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #e2e8f0; box-shadow: 0 -6px 20px rgba(0,0,0,.08); padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+.bar-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.bar-inner .grp { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.modal { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+.modal.open { display: flex; }
+.modal-card { background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 25px 50px -12px rgba(0,0,0,.3); }
+.modal-card h3 { font-size: 17px; margin-bottom: 12px; color: #1e293b; }
+.modal-card label { display: flex; gap: 10px; align-items: center; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; margin-bottom: 8px; font-weight: 700; font-size: 14px; cursor: pointer; }
+.modal-card input[type=radio] { width: 18px; height: 18px; accent-color: #e85a1e; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 12px; padding: 12px 18px; box-shadow: 0 8px 32px rgba(0,0,0,.18); border-left: 4px solid #3d5a9e; max-width: 92%; z-index: 100; font-size: 13px; font-weight: 700; }
+.toast.success { border-left-color: #10b981; } .toast.error { border-left-color: #ef4444; } .toast.warning { border-left-color: #d97706; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>Проверка проблемных марок</h1>
+      <div class="sub" id="status">Загрузка…</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" id="downloadBtn" onclick="openDownload()">⬇ Скачать xlsx</button>
+      <button class="btn" id="refreshBtn" onclick="refresh(false)">⟳ Обновить</button>
+    </div>
+  </div>
+
+  <div class="card" id="tabsCard">
+    <div class="tabs" id="tabs"></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <input type="text" id="filter" placeholder="Поиск по коду или паллету…" oninput="onFilter(this.value)">
+      <button class="btn" onclick="selectVisible(true)">Выбрать всё на вкладке</button>
+      <button class="btn" onclick="selectVisible(false)">Снять выбор</button>
+      <button class="btn" id="copyBtn" onclick="copyRows()">📋 Копировать</button>
+      <label class="chk"><input type="checkbox" id="copyInfo"> с артикулом и названием</label>
+    </div>
+    <div class="table-wrap"><table id="table"></table></div>
+    <div class="empty hidden" id="empty" style="display:none">На этой вкладке пока ничего нет</div>
+  </div>
+</div>
+
+<div class="modal" id="dlModal" onclick="if(event.target===this)closeDownload()">
+  <div class="modal-card">
+    <h3>Скачать таблицу</h3>
+    <label><input type="radio" name="dlTime" value="1" checked> С временем сканирования</label>
+    <label><input type="radio" name="dlTime" value="0"> Без времени</label>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeDownload()">Отмена</button>
+      <button class="btn btn-primary" id="dlGoBtn" onclick="doDownload()">Скачать</button>
+    </div>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="bar-inner">
+    <div class="grp">
+      <button class="btn btn-primary" id="delSelBtn" onclick="deleteSelected()" disabled>Удалить отмеченные (0)</button>
+    </div>
+    <div class="grp">
+      <button class="btn btn-danger" id="clearTabBtn" onclick="clearTab()">Очистить вкладку</button>
+      <button class="btn btn-danger" id="clearAllBtn" onclick="clearEverything()">Очистить всё</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var V = { sku: null, model: null, version: '', active: null, selected: Object.create(null), view: [], busy: false, filter: '' };
+
+function $(id) { return document.getElementById(id); }
+function esc(t) { return PM.escapeHtml(t); }
+function skey(sheet, code) { return sheet + '\u0000' + code; }
+function badgeLabel(type) { return type === 'KITY' ? 'КИТУ' : type === 'KI' ? 'КИ' : type === 'KIGU' ? 'КИГУ' : '?'; }
+
+function toast(msg, type, ms) {
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type || '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, ms || 4000);
+}
+
+function setStatus(text, isErr) {
+  var el = $('status');
+  el.textContent = text;
+  el.style.color = isErr ? '#fee2e2' : '';
+}
+
+function totalRows() {
+  var n = 0;
+  Object.keys(V.model).forEach(function(k) { n += V.model[k].length; });
+  return n;
+}
+
+function selectedCount(sheet) {
+  var n = 0;
+  var prefix = sheet + '\u0000';
+  Object.keys(V.selected).forEach(function(k) { if (!sheet || k.indexOf(prefix) === 0) n++; });
+  return n;
+}
+
+/* ---------- загрузка ---------- */
+function applyLoaded(model, version) {
+  V.model = model;
+  V.version = version;
+  // выбор сохраняется только для строк, которые всё ещё есть в файле
+  var alive = Object.create(null);
+  Object.keys(model).forEach(function(n) {
+    model[n].forEach(function(r) { alive[skey(n, r.code)] = true; });
+  });
+  Object.keys(V.selected).forEach(function(k) { if (!alive[k]) delete V.selected[k]; });
+  setStatus('Обновлено ' + new Date().toLocaleTimeString('ru-RU') + ' · строк: ' + totalRows());
+  renderAll();
+}
+
+function refresh(silent) {
+  if (V.busy) return Promise.resolve();
+  if (!silent) setStatus('Загрузка…');
+  return PM.fetchReport().then(function(info) {
+    return PM.loadModel(info).then(function(model) { applyLoaded(model, info.version); });
+  }).catch(function(e) {
+    setStatus('Ошибка загрузки: ' + e.message, true);
+    if (!silent) toast(e.message, 'error', 6000);
+  });
+}
+
+/* ---------- отрисовка ---------- */
+function renderAll() {
+  renderTabs();
+  renderTable();
+  updateBar();
+}
+
+function renderTabs() {
+  var names = PM.sheetOrder(V.model).filter(function(n) { return V.model[n].length > 0; });
+  if (!V.active || names.indexOf(V.active) === -1) V.active = names.length ? names[0] : null;
+  $('tabsCard').style.display = names.length ? '' : 'none';
+  var html = '';
+  names.forEach(function(n, i) {
+    var sel = selectedCount(n);
+    html += '<button class="tab' + (n === V.active ? ' active' : '') + '" data-tab="' + i + '">' + esc(n) +
+      ' <span class="cnt">' + V.model[n].length + '</span>' +
+      (sel ? '<span class="sel">✓' + sel + '</span>' : '') + '</button>';
+  });
+  var el = $('tabs');
+  el.innerHTML = html;
+  el._names = names;
+}
+
+function renderTable() {
+  var isDiff = V.active === PM.PROBLEM_DIFF;
+  var rows = PM.orderRows(V.active, V.model[V.active] || []);
+  var f = V.filter.trim().toLowerCase();
+  V.view = f ? rows.filter(function(r) {
+    var inf = infoOf(r);
+    return (r.code + ' ' + r.pallet + (inf ? ' ' + inf.article + ' ' + inf.name : '')).toLowerCase().indexOf(f) !== -1;
+  }) : rows;
+
+  var table = $('table');
+  var empty = $('empty');
+  if (V.view.length === 0) {
+    table.innerHTML = '';
+    $('empty').textContent = totalRows() === 0 ? 'Данных пока нет' : 'На этой вкладке пока ничего нет';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  var html = '<thead><tr><th style="width:36px"></th><th>Тип</th>' + (isDiff ? '<th>Паллет (КИТУ)</th>' : '') + '<th>Код марки</th>' + (V.sku ? '<th>Артикул</th><th>Наименование</th>' : '') + '<th>Время</th></tr></thead><tbody>';
+  V.view.forEach(function(r, i) {
+    var sel = V.selected[skey(V.active, r.code)] === true;
+    var cls = (sel ? 'sel ' : '') + (isDiff && r.type === 'KITY' ? 'pallet ' : '') + (isDiff && r.type !== 'KITY' ? 'nested' : '');
+    html += '<tr class="' + cls + '"><td><input type="checkbox" data-i="' + i + '"' + (sel ? ' checked' : '') + '></td>' +
+      '<td><span class="badge b-' + r.type + '">' + badgeLabel(r.type) + '</span></td>' +
+      (isDiff ? '<td class="mono">' + esc(r.pallet || '—') + '</td>' : '') +
+      '<td class="mono">' + esc(r.code) + '</td>' +
+      (V.sku ? (function() { var inf = infoOf(r); return '<td class="art">' + esc(inf ? inf.article : '') + '</td><td class="nm">' + esc(inf ? inf.name : '') + '</td>'; })() : '') +
+      '<td>' + esc(r.time) + '</td></tr>';
+  });
+  table.innerHTML = html + '</tbody>';
+}
+
+function updateBar() {
+  var n = selectedCount();
+  var btn = $('delSelBtn');
+  btn.textContent = 'Удалить отмеченные (' + n + ')';
+  btn.disabled = V.busy || n === 0;
+  $('clearTabBtn').disabled = V.busy || !V.model || (V.model[V.active] || []).length === 0;
+  $('clearAllBtn').disabled = V.busy || !V.model || totalRows() === 0;
+  $('refreshBtn').disabled = V.busy;
+  $('downloadBtn').disabled = V.busy || !V.model || totalRows() === 0;
+  var rows = V.model ? copyTargetRows() : [];
+  $('copyBtn').textContent = (selectedCount(V.active) ? '📋 Копировать отмеченные' : '📋 Копировать все') + ' (' + rows.length + ')';
+  $('copyBtn').disabled = rows.length === 0;
+}
+
+/* ---------- выбор ---------- */
+$('tabs').addEventListener('click', function(e) {
+  var b = e.target.closest('.tab');
+  if (!b) return;
+  V.active = this._names[parseInt(b.getAttribute('data-tab'), 10)];
+  renderAll();
+});
+
+$('table').addEventListener('change', function(e) {
+  var cb = e.target;
+  if (!cb.matches || !cb.matches('input[type=checkbox][data-i]')) return;
+  var r = V.view[parseInt(cb.getAttribute('data-i'), 10)];
+  if (!r) return;
+  setSelected(r, cb.checked);
+  // отметка КИТУ в «Разный статус» отмечает весь паллет
+  if (V.active === PM.PROBLEM_DIFF && r.type === 'KITY') {
+    (V.model[V.active] || []).forEach(function(x) {
+      if (x.pallet === r.code) setSelected(x, cb.checked);
+    });
+  }
+  renderAll();
+});
+
+function setSelected(r, on) {
+  var k = skey(V.active, r.code);
+  if (on) V.selected[k] = true; else delete V.selected[k];
+}
+
+function selectVisible(on) {
+  V.view.forEach(function(r) { setSelected(r, on); });
+  renderAll();
+}
+
+function onFilter(v) {
+  V.filter = v;
+  renderTable();
+  updateBar();
+}
+
+/* ---------- удаление ---------- */
+// Удаляются только те строки, которые вы видели на экране (пары лист+код).
+// Всё, что ТСД добавил после последнего обновления, остаётся в файле.
+function removePairs(pairs, okMessage) {
+  if (V.busy || pairs.length === 0) return;
+  V.busy = true;
+  updateBar();
+  setStatus('Применяем изменения к актуальной версии файла…');
+
+  PM.transact(
+    function(model) { PM.removeRows(model, pairs); },
+    function(model) { PM.assertAbsent(model, pairs); },
+    function(n) { if (n > 1) setStatus('Файл изменился на сервере, повторяем (попытка ' + n + ')…'); }
+  ).then(function(res) {
+    pairs.forEach(function(p) { delete V.selected[skey(p.sheet, p.code)]; });
+    V.busy = false;
+    applyLoaded(res.model, res.version);
+    toast(okMessage, 'success');
+  }).catch(function(e) {
+    V.busy = false;
+    toast('Ошибка: ' + e.message, 'error', 8000);
+    refresh(true);
+  });
+}
+
+function deleteSelected() {
+  var pairs = Object.keys(V.selected).map(function(k) {
+    var p = k.split('\u0000');
+    return { sheet: p[0], code: p[1] };
+  });
+  if (!pairs.length) return;
+  if (!confirm('Удалить отмеченные строки (' + pairs.length + ') из problem.xlsx?')) return;
+  removePairs(pairs, 'Удалено строк: ' + pairs.length);
+}
+
+function pairsOf(sheet) {
+  return (V.model[sheet] || []).map(function(r) { return { sheet: sheet, code: r.code }; });
+}
+
+function clearTab() {
+  var pairs = pairsOf(V.active);
+  if (!pairs.length) return;
+  if (!confirm('Очистить вкладку «' + V.active + '»?\nБудет удалено строк: ' + pairs.length +
+    ' (только те, что вы видите; новые строки с ТСД останутся).')) return;
+  removePairs(pairs, 'Вкладка очищена: ' + pairs.length + ' строк');
+}
+
+function clearEverything() {
+  var pairs = [];
+  Object.keys(V.model).forEach(function(n) { pairs = pairs.concat(pairsOf(n)); });
+  if (!pairs.length) return;
+  if (!confirm('Очистить ВСЁ содержимое?\nБудет удалено строк: ' + pairs.length +
+    '.\n4 основные вкладки останутся пустыми, остальные вкладки удалятся.\n' +
+    'Строки, добавленные с ТСД после последнего обновления, сохранятся.')) return;
+  removePairs(pairs, 'Всё очищено: ' + pairs.length + ' строк');
+}
+
+/* ---------- информация о марке (SKU List) ---------- */
+function infoOf(r) {
+  return V.sku ? PM.skuInfo(V.sku, r.type, r.code) : null;
+}
+
+/* ---------- копирование строк ---------- */
+// Есть отмеченные строки на вкладке — копируем их, иначе все видимые (с учётом поиска).
+function copyTargetRows() {
+  if (!V.active || !V.model) return [];
+  var all = PM.orderRows(V.active, V.model[V.active] || []);
+  var sel = all.filter(function(r) { return V.selected[skey(V.active, r.code)] === true; });
+  return sel.length ? sel : V.view;
+}
+
+function rowText(r, withInfo) {
+  var line = PM.TYPE_LABEL[r.type] + ' ' + r.code;
+  if (withInfo) {
+    var inf = infoOf(r);
+    if (inf) line += ' | ' + inf.article + ' | ' + inf.name;
+  }
+  return line;
+}
+
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  return new Promise(function(resolve, reject) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:0;top:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (ok) resolve(); else reject(new Error('copy failed'));
+  });
+}
+
+function copyRows() {
+  var rows = copyTargetRows();
+  if (!rows.length) { toast('Нет строк для копирования', 'warning'); return; }
+  var withInfo = $('copyInfo').checked;
+  var text = rows.map(function(r) { return rowText(r, withInfo); }).join('\n');
+  copyText(text).then(function() {
+    toast('Скопировано строк: ' + rows.length, 'success', 2500);
+  }).catch(function() {
+    toast('Не удалось скопировать, выделите и скопируйте вручную', 'error', 5000);
+  });
+}
+
+/* ---------- скачивание ---------- */
+function openDownload() { $('dlModal').classList.add('open'); }
+function closeDownload() { $('dlModal').classList.remove('open'); }
+
+function doDownload() {
+  var withTime = document.querySelector('input[name=dlTime]:checked').value === '1';
+  var go = $('dlGoBtn');
+  go.disabled = true;
+  refresh(true).then(function() {   // перед выгрузкой берём свежую версию
+    if (!V.model || totalRows() === 0) { toast('Нет данных для выгрузки', 'warning'); return; }
+    return PM.buildWorkbook(V.model, { withTime: withTime }).xlsx.writeBuffer().then(function(buf) {
+      var d = new Date();
+      function p2(n) { return String(n).padStart(2, '0'); }
+      var name = 'problem_' + d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) +
+        '_' + p2(d.getHours()) + '-' + p2(d.getMinutes()) + (withTime ? '' : '_без-времени') + '.xlsx';
+      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+      closeDownload();
+      toast('Файл сформирован: ' + name, 'success');
+    });
+  }).catch(function(e) {
+    toast('Ошибка выгрузки: ' + e.message, 'error', 6000);
+  }).then(function() { go.disabled = false; });
+}
+
+/* ---------- старт ---------- */
+refresh(false);
+PM.loadSkuIndex().then(function(idx) {
+  V.sku = idx;
+  if (V.model) renderAll();
+}).catch(function(e) {
+  console.error('SKU error:', e);
+  toast('SKU List не загружен: артикулы и названия недоступны (' + e.message + ')', 'warning', 6000);
+});
+setInterval(function() {
+  if (!document.hidden && !V.busy) refresh(true);
+}, 20000);
+</script>
+</body>
+</html>

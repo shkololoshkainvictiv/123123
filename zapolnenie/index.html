@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Карта склада и Учет товаров</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, .06); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(61, 90, 158, .35); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(61, 90, 158, .55); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e4e5eb; color: #2a2a3a; min-height: 100vh; overflow-x: hidden; user-select: none; -webkit-user-select: none; }
+
+.dashboard-container { max-width: 1400px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; position: relative; }
+
+.back-btn {
+  position: fixed; top: 20px; left: 20px; width: 46px; height: 46px;
+  border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 7px 9px 20px rgba(30, 30, 60, .16); transition: all .25s; z-index: 1000; text-decoration: none;
+}
+.back-btn:hover { background: rgba(61, 90, 158, .08); transform: translateY(-2px); box-shadow: 9px 12px 26px rgba(30, 30, 60, .22); }
+.back-btn:active { transform: translateX(-1px); }
+.back-btn svg { width: 22px; height: 22px; fill: #3d5a9e; }
+
+.header {
+  text-align: center; margin-bottom: 28px; padding: 24px 20px;
+  background: linear-gradient(135deg, #e85a1e, #ff6f32 50%, #ff8855);
+  border-radius: 16px; box-shadow: 8px 12px 28px rgba(200, 70, 20, .35);
+  position: relative; overflow: hidden;
+}
+.header::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, .1) 0%, transparent 60%); pointer-events: none;
+}
+.header::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .25), transparent);
+}
+
+.header-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 14px;
+  background: rgba(255, 255, 255, .15); backdrop-filter: blur(4px);
+  margin-bottom: 12px; border: 1px solid rgba(255, 255, 255, .2);
+  box-shadow: 4px 6px 14px rgba(0, 0, 0, .18);
+  color: #fff;
+}
+.header-icon svg { width: 28px; height: 28px; }
+.header h1 { font-size: 25px; color: #fff; font-weight: 700; position: relative; }
+.header .subtitle { font-size: 15px; color: rgba(255, 255, 255, .9); margin-top: 6px; position: relative; display: inline-block; font-weight: 500; }
+
+.header-actions-right { position: absolute; top: 20px; right: 20px; z-index: 10; }
+.status-badge { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.15); padding: 8px 16px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.15); font-size: 13px; font-weight: 600; color: #fff; }
+.status-indicator { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.card { background: #fff; border-radius: 16px; padding: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 18px rgba(30,30,60,0.04); display: flex; flex-direction: column; gap: 12px; }
+.stat-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #64748b; }
+.stat-value { font-size: 26px; font-weight: 800; color: #0f172a; }
+.stat-progress { height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; margin: 4px 0; }
+.stat-bar { height: 100%; background: linear-gradient(90deg, #e85a1e, #ff8855); width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+.stat-sub { font-size: 12px; color: #64748b; font-weight: 600; }
+
+.warehouse-selectors { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 8px; }
+.wh-card { background: #fff; border-radius: 18px; padding: 24px; border: 2px solid transparent; box-shadow: 0 6px 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: all 0.25s ease; position: relative; }
+.wh-card:hover { transform: translateY(-3px); border-color: #ff6f32; box-shadow: 0 12px 28px rgba(255,111,50,0.15); }
+.wh-card-header { display: flex; justify-content: space-between; align-items: center; }
+.wh-card-title { font-size: 20px; font-weight: 800; color: #1e293b; }
+.wh-card-tag { background: #fff3e0; color: #e85a1e; font-weight: 700; font-size: 12px; padding: 4px 12px; border-radius: 20px; }
+
+.btn-open-map { width: 100%; padding: 16px; border: 1px solid #3a3d4e; border-radius: 14px; background: #2a2c38; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+.btn-open-map:hover { background: #353847; border-color: #4f536b; transform: translateY(-1px); }
+.btn-open-map svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+.card-title { font-size: 18px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+.sw-row { display: flex; gap: 12px; margin-top: 4px; }
+.sw, .map-search-wrapper { position: relative; flex: 1; }
+.si { width: 100%; padding: 10px 16px 10px 40px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 14px; background: #f8fafc; transition: all 0.2s; }
+.si:focus { outline: none; border-color: #ff6f32; background: #fff; box-shadow: 0 0 0 3px rgba(255,111,50,0.1); }
+.sw-ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; fill: #64748b; pointer-events: none; }
+.wh-select { padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; font-size: 14px; font-weight: 600; color: #334155; cursor: pointer; outline: none; transition: border-color 0.2s; }
+.wh-select:focus { border-color: #ff6f32; background: #fff; }
+.table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; max-height: 420px; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+th { background: #f1f5f9; color: #475569; padding: 10px 14px; font-size: 12px; text-transform: uppercase; font-weight: 700; position: sticky; top: 0; z-index: 5; }
+td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; white-space: nowrap; }
+tr:hover td { background: #f8fafc; }
+.cell-tag { display: inline-block; padding: 3px 8px; background: #eff6ff; color: #e85a1e; font-weight: 700; border-radius: 6px; cursor: pointer; border: 1px solid #ffe0cc; transition: all 0.15s; }
+.cell-tag:hover { background: #e85a1e; color: #fff; }
+.badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+
+.map-screen { display: none; position: fixed; inset: 0; background: #e4e5eb; z-index: 1000; padding: 12px; flex-direction: column; gap: 12px; height: 100vh; width: 100vw; }
+.map-screen.active { display: flex; }
+.map-screen-header { background: #fff; border-radius: 14px; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; box-shadow: 0 4px 14px rgba(0,0,0,0.05); gap: 12px; flex-shrink: 0; }
+.header-actions { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 300px; }
+
+.btn-back-map { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #2a2c38; color: #fff; border: 1px solid #3a3d4e; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.btn-back-map:hover { background: #353847; transform: translateX(-2px); }
+.btn-back-map svg { width: 16px; height: 16px; stroke: #fff; stroke-width: 2.5; fill: none; }
+
+.map-tabs { display: flex; gap: 8px; background: #f1f5f9; padding: 4px; border-radius: 10px; }
+.map-tab-btn { padding: 8px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; background: transparent; color: #64748b; cursor: pointer; transition: all 0.2s; }
+.map-tab-btn.active { background: #fff; color: #e85a1e; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+.map-search-wrapper { max-width: 320px; min-width: 200px; }
+.map-search-wrapper .si { padding-top: 8px; padding-bottom: 8px; }
+
+.legend { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; color: #475569; }
+.legend-bar { width: 140px; height: 8px; border-radius: 4px; background: linear-gradient(to right, #000 0%, #b42828 60%, #2c6e49 100%); }
+
+.map-screen-body { flex: 1; background: #fff; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; min-height: 0; box-shadow: 0 4px 14px rgba(0,0,0,0.05); position: relative; overflow: hidden; }
+.map-container { flex: 1; width: 100%; background: #f8fafc; border-radius: 10px; border: 1px solid rgba(0,0,0,0.06); box-shadow: inset 0 2px 8px rgba(0,0,0,0.03); overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; cursor: crosshair; }
+.map-wrapper { display: flex; width: max-content; height: max-content; padding: 20px; background: #f8fafc; transform-origin: center center; transition: filter 0.3s ease; }
+
+.loupe { position: absolute; top: 0; left: 0; width: 320px; height: 320px; border-radius: 16px; background: #f8fafc; box-shadow: 0 14px 48px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.9); pointer-events: none; overflow: hidden; display: none; z-index: 1000; will-change: transform; }
+.loupe-clone-wrapper { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; pointer-events: none; }
+.loupe-hud { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.9); color: #fff; padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap; z-index: 1002; backdrop-filter: blur(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); }
+
+.y-axis { border-right: 2px solid #e2e8f0; padding-right: 12px; display: flex; flex-direction: column; background: #f8fafc; }
+.corner-header { height: 56px; display: flex; align-items: flex-end; justify-content: flex-end; padding-bottom: 10px; font-size: 12px; font-weight: 800; color: #94a3b8; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; background: #f8fafc; }
+.y-labels { padding-top: 10px; }
+.y-label { height: 14px; line-height: 14px; margin-bottom: 2px; font-size: 11px; font-weight: 700; color: #94a3b8; display: flex; align-items: center; justify-content: flex-end; }
+.y-label.sep { margin-bottom: 14px; } 
+.map-content { display: flex; gap: 32px; padding-left: 12px; } 
+.aisle-group { display: flex; gap: 6px; }
+.rack-vertical { display: flex; flex-direction: column; }
+.rack-header { height: 56px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; background: #f8fafc; }
+.rack-title { text-align: center; font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 4px; white-space: nowrap; }
+.levels-header { display: flex; gap: 2px; justify-content: center; }
+.levels-header span { width: 14px; text-align: center; font-size: 10px; font-weight: 800; color: #94a3b8; }
+.rack-cells { padding-top: 10px; }
+.cell-row { display: flex; gap: 2px; margin-bottom: 2px; height: 14px; }
+.cell-row.sep { margin-bottom: 14px; }
+.cell { width: 14px; height: 14px; border-radius: 3px; background: #cbd5e1; cursor: pointer; position: relative; transition: transform 0.15s, box-shadow 0.15s, filter 0.3s, opacity 0.3s; }
+.cell:hover:not(.missing):not(.empty) { transform: scale(1.6); z-index: 10; box-shadow: 0 2px 10px rgba(0,0,0,0.5); border: 1px solid #fff; }
+.cell.empty { background: #e2e8f0; cursor: default; }
+.cell.missing { opacity: 0; pointer-events: none; }
+.multi-badge { position: absolute; top: -3px; right: -3px; width: 6px; height: 6px; background: #fff; border: 1.5px solid #0f172a; border-radius: 50%; z-index: 2; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+.map-container.search-active .cell:not(.highlight-search):not(.missing) { opacity: 0.15; filter: grayscale(1); }
+.cell.highlight-search {
+  box-shadow: 0 0 12px 2px #ff8855; border: 2px solid #fff;
+  transform: scale(1.4); z-index: 8; animation: pulse-search 1.2s infinite alternate;
+}
+@keyframes pulse-search { from { box-shadow: 0 0 6px 1px #ff8855; transform: scale(1.3); } to { box-shadow: 0 0 16px 4px #ff6f32; transform: scale(1.6); } }
+
+.cell.last-opened {
+  z-index: 15 !important;
+  animation: ping-last-opened 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+}
+@keyframes ping-last-opened {
+  0% { box-shadow: 0 0 0 2px #fff, 0 0 25px 8px #10b981; transform: scale(2.5); border: 2px solid #10b981; }
+  25% { box-shadow: 0 0 0 1px #fff, 0 0 15px 4px #10b981; transform: scale(1.8); }
+  80% { box-shadow: 0 0 0 1px #fff, 0 0 10px 2px #10b981; transform: scale(1.4); }
+  100% { box-shadow: none; transform: scale(1); border-color: transparent; }
+}
+
+.modal-overlay { 
+  position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); 
+  z-index: 2000; display: flex; align-items: center; justify-content: center; 
+  visibility: hidden; opacity: 0; transition: opacity 0.35s ease, visibility 0.35s; 
+}
+.modal-overlay.active { visibility: visible; opacity: 1; }
+
+.modal-card { 
+  background: #fff; width: 90%; max-width: 520px; border-radius: 20px; overflow: hidden; 
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); 
+  transform: scale(0.95) translateY(20px); opacity: 0; transform-origin: center;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease; 
+  display: flex; flex-direction: column; max-height: 90vh; 
+}
+.modal-overlay.active .modal-card { transform: scale(1) translateY(0); opacity: 1; }
+.modal-card.shrinking { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease; }
+
+.modal-header { padding: 22px 26px; background: #1e293b; color: #fff; position: relative; transition: background 0.3s; }
+.modal-header h2 { font-size: 22px; font-weight: 800; margin-bottom: 4px; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.modal-header p { font-size: 14px; opacity: 0.95; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.modal-close { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.2); border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; }
+.modal-close:hover { background: rgba(0,0,0,0.4); }
+.modal-close svg { width: 18px; height: 18px; fill: #fff; }
+.modal-multi-tabs { display: flex; background: #f8fafc; padding: 12px 24px 0; gap: 8px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.m-tab { padding: 8px 16px; font-size: 13px; font-weight: 700; border-radius: 8px 8px 0 0; background: #e2e8f0; color: #64748b; cursor: pointer; border: 1px solid transparent; border-bottom: none; white-space: nowrap; }
+.m-tab.active { background: #fff; color: #e85a1e; border-color: #e2e8f0; }
+.modal-body { padding: 24px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.info-row { display: flex; flex-direction: column; margin-bottom: 14px; }
+.info-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+.info-value { font-size: 14px; color: #0f172a; font-weight: 600; background: #f8fafc; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+@media (max-width: 768px) {
+  .dashboard-container { padding: 12px; }
+  .header { padding-top: 70px; }
+  .header-actions-right { top: 20px; right: 20px; left: auto; transform: none; display: flex; justify-content: flex-end; width: calc(100% - 70px); }
+  .status-badge { font-size: 11px; padding: 6px 12px; }
+  .status-indicator { width: 8px; height: 8px; }
+  .back-btn { top: 12px; left: 12px; width: 42px; height: 42px; border-radius: 10px; }
+  .stats-grid, .warehouse-selectors { grid-template-columns: 1fr; gap: 12px; }
+  .sw-row { flex-direction: column; }
+  .wh-card { padding: 20px; }
+  
+  .map-screen { padding-bottom: env(safe-area-inset-bottom, 20px); }
+  .map-search-wrapper { max-width: 100%; width: 100%; margin-top: 4px; }
+  
+  .map-container { align-items: flex-start !important; justify-content: flex-start !important; overflow: auto !important; -webkit-overflow-scrolling: touch; padding: 0 !important; padding-bottom: max(80px, env(safe-area-inset-bottom, 80px)) !important; }
+  .map-wrapper { transform: none !important; padding: 0 !important; }
+  .loupe { display: none !important; }
+
+  .y-axis { position: -webkit-sticky; position: sticky; left: 0; z-index: 25; background: #f8fafc; box-shadow: 3px 0 6px rgba(0,0,0,0.06); }
+  .corner-header { position: -webkit-sticky; position: sticky; top: 0; left: 0; z-index: 30; background: #f8fafc; }
+  .rack-header { position: -webkit-sticky; position: sticky; top: 0; z-index: 20; background: #f8fafc; box-shadow: 0 3px 6px rgba(0,0,0,0.06); }
+
+  .cell { width: 24px; height: 24px; border-radius: 4px; }
+  .cell-row { height: 24px; gap: 4px; }
+  .y-label { height: 24px; line-height: 24px; font-size: 12px; }
+  .y-labels { padding-top: 14px; } 
+  .levels-header span { width: 24px; font-size: 11px; }
+  .levels-header { gap: 4px; }
+  .rack-cells { padding-top: 14px; }
+  .aisle-group { gap: 10px; }
+  .map-content { gap: 24px; }
+  .info-grid { grid-template-columns: 1fr; gap: 0; }
+}
+</style>
+</head>
+<body>
+
+<a href="http://okkam.space" class="back-btn" title="Главное меню">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="dashboard-container" id="dashboardView">
+  <header class="header">
+    <div class="header-actions-right">
+      <div class="status-badge" id="statusBadge">
+        <div class="status-indicator"></div>
+        <span id="statusTitle">Поиск данных...</span>
+      </div>
+    </div>
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
+    </div>
+    <h1>Карта загруженности склада</h1>
+    <p class="subtitle">визуализация заполненности ячеек</p>
+  </header>
+
+  <div class="stats-grid">
+    <div class="card">
+      <div class="stat-header"><span>Склад 12 (Заполнение)</span><span id="st-12-pct">0%</span></div>
+      <div class="stat-progress"><div class="stat-bar" id="st-12-bar"></div></div>
+      <div class="stat-sub" id="st-12-sub">0 / 0 ячеек</div>
+    </div>
+    <div class="card">
+      <div class="stat-header"><span>Склад 11 (Заполнение)</span><span id="st-11-pct">0%</span></div>
+      <div class="stat-progress"><div class="stat-bar" id="st-11-bar"></div></div>
+      <div class="stat-sub" id="st-11-sub">0 / 0 ячеек</div>
+    </div>
+    <div class="card">
+      <div class="stat-header"><span>Общая занятость</span><span id="st-total-pct">0%</span></div>
+      <div class="stat-progress"><div class="stat-bar" id="st-total-bar"></div></div>
+      <div class="stat-sub" id="st-total-sub">0 / 0 ячеек</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 Позиции на складе</div>
+    <div class="sw-row">
+      <div class="sw">
+        <svg class="sw-ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <input type="text" class="si" id="searchInput" placeholder="Поиск по артикулу, наименованию, контейнеру, партии или ячейке..." oninput="filterItemsTable()">
+      </div>
+      <select id="whFilter" class="wh-select" onchange="filterItemsTable()">
+        <option value="all">Все склады (11 и 12)</option>
+        <option value="12">Склад 12</option>
+        <option value="11">Склад 11</option>
+      </select>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Склад</th>
+            <th>Ячейка</th>
+            <th>Контейнер</th>
+            <th>Артикул</th>
+            <th>Наименование</th>
+            <th>Партия</th>
+            <th>ОСГ (%)</th>
+            <th>Количество</th>
+          </tr>
+        </thead>
+        <tbody id="itemsTableBody">
+          <tr><td colspan="8" style="text-align:center; padding: 20px; color:#888;">Загрузка данных из ostatok.xlsx...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="warehouse-selectors">
+    <div class="wh-card">
+      <div class="wh-card-header"><div class="wh-card-title">Склад 12</div><div class="wh-card-tag" id="wh-12-tag">0% Занято</div></div>
+      <button class="btn-open-map" onclick="openMapScreen('12')"><span>Открыть карту Склада 12</span><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="wh-card">
+      <div class="wh-card-header"><div class="wh-card-title">Склад 11</div><div class="wh-card-tag" id="wh-11-tag">0% Занято</div></div>
+      <button class="btn-open-map" onclick="openMapScreen('11')"><span>Открыть карту Склада 11</span><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="map-screen" id="mapScreen">
+  <div class="map-screen-header">
+    <div class="header-actions">
+      <button class="btn-back-map" onclick="closeMapScreen()">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Назад</span>
+      </button>
+      <div class="map-tabs">
+        <button class="map-tab-btn active" id="tab-btn-12" onclick="switchMapTab('12')">Склад 12</button>
+        <button class="map-tab-btn" id="tab-btn-11" onclick="switchMapTab('11')">Склад 11</button>
+      </div>
+      <div class="map-search-wrapper">
+        <svg class="sw-ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <input type="text" class="si" id="mapSearchInput" placeholder="Искать товар, партию или ячейку..." oninput="filterMapCells()">
+      </div>
+    </div>
+    <div class="legend"><span>0% ОСГ</span><div class="legend-bar"></div><span>100% ОСГ</span></div>
+  </div>
+
+  <div class="map-screen-body">
+    <div class="map-container" id="map-container-12" style="display:flex;"></div>
+    <div class="map-container" id="map-container-11" style="display:none;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-header" id="modalHeader">
+      <button class="modal-close" onclick="closeModal()">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h2 id="modalTitle">Контейнер</h2>
+      <p id="modalSub">Ячейка</p>
+    </div>
+    <div class="modal-multi-tabs" id="modalTabs" style="display:none;"></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+let G = { data: { '12': {}, '11': {} }, allItems: [], activeWh: '12' };
+const zoomState = {};
+window.currentActiveCellEl = null;
+
+function $(id) { return document.getElementById(id); }
+
+function parseOsg(val) {
+  if (!val) return 0;
+  let str = String(val).replace('%', '').replace(',', '.').trim();
+  let num = parseFloat(str);
+  if (isNaN(num)) return 0;
+  if (num > 0 && num <= 1) num *= 100;
+  return Math.max(0, Math.min(100, num));
+}
+
+function getOsgColor(p) {
+  if (p >= 60) {
+    let hue = ((p - 60) / 40) * 120;
+    return `hsl(${hue}, 80%, 45%)`;
+  } else {
+    let light = (p / 60) * 50;
+    return `hsl(0, 100%, ${light}%)`;
+  }
+}
+
+function isMissing12(row, col, lvl) {
+  if (row === 1) {
+    if (col < 1 || col > 90) return true;
+    return false;
+  }
+  if (row >= 2 && row <= 19) {
+    if (col < 1 || col > 87) return true;
+    if (col >= 43 && col <= 45) {
+      return !['D', 'E', 'F'].includes(lvl);
+    }
+    return false;
+  }
+  if (row === 20) {
+    if (col < 1 || col > 90) return true;
+    return false;
+  }
+  return true;
+}
+
+function isMissing11(row, col, lvl) {
+  if (row === 1) {
+    if (col < 1 || col > 102) return true;
+    return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+  }
+  if (row === 2) {
+    if (col < 1 || col > 102) return true;
+    if (col >= 46 && col <= 48) {
+      return !['F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 1 && col <= 24) {
+      return !['A', 'B', 'C', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    return !['A', 'B', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+  }
+  if (row >= 3 && row <= 11) {
+    if (col < 1 || col > 102) return true;
+    if (col >= 46 && col <= 48) {
+      return !['F', 'G', 'H', 'K'].includes(lvl);
+    }
+    return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+  }
+  if (row >= 12 && row <= 17) {
+    if (col < 7 || col > 102) return true;
+    if (col >= 46 && col <= 48) {
+      return !['F', 'G', 'H', 'K'].includes(lvl);
+    }
+    return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+  }
+  if (row === 18) {
+    if (col < 1 || col > 102) return true;
+    if (col >= 61 && col <= 63) {
+      return !['G', 'H', 'K'].includes(lvl);
+    }
+    return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+  }
+  if (row === 19) {
+    if (col >= 1 && col <= 57) {
+      return !['A', 'B', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 61 && col <= 63) {
+      return !['G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 64 && col <= 102) {
+      return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    return true;
+  }
+  if (row >= 20 && row <= 22) {
+    if ((col >= 19 && col <= 21) || (col >= 40 && col <= 42) || (col >= 61 && col <= 63)) {
+      return !['G', 'H', 'K'].includes(lvl);
+    }
+    if ((col >= 1 && col <= 18) || (col >= 22 && col <= 39) || (col >= 43 && col <= 57)) {
+      return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 64 && col <= 96) {
+      return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    return true;
+  }
+  if (row === 23) {
+    if ((col >= 19 && col <= 21) || (col >= 40 && col <= 42)) {
+      return !['G', 'H', 'K'].includes(lvl);
+    }
+    if ((col >= 1 && col <= 18) || (col >= 22 && col <= 39)) {
+      return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 43 && col <= 57) {
+      return !['A', 'B', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 64 && col <= 96) {
+      return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    return true;
+  }
+  if (row === 24) {
+    if (col >= 1 && col <= 39) {
+      return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 40 && col <= 42) {
+      return !['B', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 43 && col <= 45) {
+      return !['E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 46 && col <= 57) {
+      return !['A', 'B', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    if (col >= 61 && col <= 96) {
+      return !['A', 'E', 'F', 'G', 'H', 'K'].includes(lvl);
+    }
+    return true;
+  }
+  return true;
+}
+
+function getAvailableLevels(wh, row) {
+  let colsCount = (wh === '12') ? 90 : 102;
+  let allLevels = (wh === '12') ? ['A','B','C','D','E','F'] : ['A','B','C','D','E','F','G','H','K'];
+  return allLevels.filter(lvl => {
+    for (let c = 1; c <= colsCount; c++) {
+      let missing = (wh === '12') ? isMissing12(row, c, lvl) : isMissing11(row, c, lvl);
+      if (!missing) return true;
+    }
+    return false;
+  });
+}
+
+function processWB(wb, lastModifiedDate) {
+  let sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) throw new Error('Лист пуст');
+  let rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+  
+  for(let i=1; i<=20; i++) G.data['12'][i] = {};
+  for(let i=1; i<=24; i++) G.data['11'][i] = {};
+  G.allItems = [];
+
+  const ID_REGEX = /^(12|Z)-(\d{3})-(\d{3})([A-FGHK])$/i;
+
+  rows.forEach(row => {
+    if (!row || row.length < 5) return;
+    let cellId = String(row[0] || '').trim();
+    let match = cellId.match(ID_REGEX);
+    if (!match) return;
+
+    let whCode = match[1].toUpperCase();
+    let wh = (whCode === '12') ? '12' : '11';
+    let r = parseInt(match[2], 10);
+    let c = parseInt(match[3], 10);
+    let l = match[4].toUpperCase();
+
+    if (!G.data[wh][r]) G.data[wh][r] = {};
+    if (!G.data[wh][r][c]) G.data[wh][r][c] = {};
+    if (!G.data[wh][r][c][l]) G.data[wh][r][c][l] = [];
+
+    let itemObj = {
+      wh: wh, cellId: cellId, r: r, c: c, l: l,
+      container: String(row[1] || ''), article: String(row[3] || ''),
+      name: String(row[4] || ''), batch: String(row[7] || ''),
+      prodDate: String(row[8] || ''), packSize: String(row[10] || ''),
+      osg: parseOsg(row[12]), packsCount: String(row[13] || ''), piecesCount: String(row[16] || '')
+    };
+
+    G.data[wh][r][c][l].push(itemObj);
+    G.allItems.push(itemObj);
+  });
+
+  updateDashboardStats(lastModifiedDate);
+  renderAllRacks('12');
+  renderAllRacks('11');
+  filterItemsTable();
+}
+
+function updateDashboardStats(fileDateStr) {
+  $('statusTitle').textContent = `Обновлено: ${fileDateStr}`;
+
+  let calculateWh = (wh, maxRows, maxCols, isMissingFn) => {
+    let totalValid = 0, occupied = 0, itemsCount = 0;
+    for (let r = 1; r <= maxRows; r++) {
+      for (let c = 1; c <= maxCols; c++) {
+        ['A','B','C','D','E','F','G','H','K'].forEach(lvl => {
+          if (!isMissingFn(r, c, lvl)) {
+            totalValid++;
+            let cellItems = G.data[wh]?.[r]?.[c]?.[lvl] || [];
+            if (cellItems.length > 0) { occupied++; itemsCount += cellItems.length; }
+          }
+        });
+      }
+    }
+    return { totalValid, occupied, itemsCount };
+  };
+
+  let st12 = calculateWh('12', 20, 90, isMissing12);
+  let st11 = calculateWh('11', 24, 102, isMissing11);
+  let pct12 = st12.totalValid ? ((st12.occupied / st12.totalValid) * 100).toFixed(1) : 0;
+  let pct11 = st11.totalValid ? ((st11.occupied / st11.totalValid) * 100).toFixed(1) : 0;
+  let totalValidAll = st12.totalValid + st11.totalValid;
+  let totalOccupiedAll = st12.occupied + st11.occupied;
+  let pctTotal = totalValidAll ? ((totalOccupiedAll / totalValidAll) * 100).toFixed(1) : 0;
+
+  $('st-12-pct').textContent = `${pct12}%`; $('st-12-bar').style.width = `${pct12}%`;
+  $('st-12-sub').textContent = `${st12.occupied.toLocaleString()} / ${st12.totalValid.toLocaleString()} ячеек`;
+  $('wh-12-tag').textContent = `${pct12}% Занято`;
+
+  $('st-11-pct').textContent = `${pct11}%`; $('st-11-bar').style.width = `${pct11}%`;
+  $('st-11-sub').textContent = `${st11.occupied.toLocaleString()} / ${st11.totalValid.toLocaleString()} ячеек`;
+  $('wh-11-tag').textContent = `${pct11}% Занято`;
+
+  $('st-total-pct').textContent = `${pctTotal}%`; $('st-total-bar').style.width = `${pctTotal}%`;
+  $('st-total-sub').textContent = `${totalOccupiedAll.toLocaleString()} / ${totalValidAll.toLocaleString()} ячеек`;
+}
+
+function filterItemsTable() {
+  let query = ($('searchInput').value || '').toLowerCase().trim();
+  let whFilter = $('whFilter').value;
+  let filtered = G.allItems.filter(item => {
+    if (whFilter !== 'all' && item.wh !== whFilter) return false;
+    if (!query) return true;
+    return item.article.toLowerCase().includes(query) || item.name.toLowerCase().includes(query) ||
+           item.cellId.toLowerCase().includes(query) || item.container.toLowerCase().includes(query) ||
+           item.batch.toLowerCase().includes(query);
+  });
+
+  let tbody = $('itemsTableBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color:#888;">Ничего не найдено</td></tr>`;
+    return;
+  }
+
+  let html = '';
+  filtered.slice(0, 100).forEach(item => {
+    let osgColor = getOsgColor(item.osg);
+    let qty = item.piecesCount ? `${item.piecesCount} шт.` : (item.packsCount ? `${item.packsCount} уп.` : '—');
+    html += `<tr>
+      <td><strong>Склад ${item.wh}</strong></td>
+      <td><span class="cell-tag" onclick="jumpToCell('${item.wh}', ${item.r}, ${item.c}, '${item.l}')">${item.cellId}</span></td>
+      <td>${item.container || '—'}</td>
+      <td><strong>${item.article || '—'}</strong></td>
+      <td title="${item.name}">${item.name || '—'}</td>
+      <td>${item.batch || '—'}</td>
+      <td><span class="badge" style="background:${osgColor}22; color:${osgColor}; border: 1px solid ${osgColor}55;">${item.osg.toFixed(1)}%</span></td>
+      <td>${qty}</td>
+    </tr>`;
+  });
+
+  if (filtered.length > 100) html += `<tr><td colspan="8" style="text-align:center; font-size:12px; color:#64748b; background:#f8fafc; padding:8px;">Показано 100 из ${filtered.length}. Уточните запрос.</td></tr>`;
+  tbody.innerHTML = html;
+}
+
+function filterMapCells() {
+  let query = $('mapSearchInput').value.toLowerCase().trim();
+  let container12 = $('map-container-12');
+  let container11 = $('map-container-11');
+
+  if (!query) {
+    container12.classList.remove('search-active');
+    container11.classList.remove('search-active');
+    document.querySelectorAll('.cell.highlight-search').forEach(el => el.classList.remove('highlight-search'));
+    return;
+  }
+
+  container12.classList.add('search-active');
+  container11.classList.add('search-active');
+
+  let matchedCells = new Set();
+  G.allItems.forEach(item => {
+    if (item.article.toLowerCase().includes(query) || item.name.toLowerCase().includes(query) ||
+        item.cellId.toLowerCase().includes(query) || item.container.toLowerCase().includes(query) ||
+        item.batch.toLowerCase().includes(query)) {
+        matchedCells.add(`${item.wh}-${item.r}-${item.c}-${item.l}`);
+    }
+  });
+
+  document.querySelectorAll('.cell').forEach(cell => {
+    if (cell.classList.contains('missing') || cell.classList.contains('empty')) return;
+    let key = `${cell.dataset.wh}-${cell.dataset.r}-${cell.dataset.c}-${cell.dataset.l}`;
+    if (matchedCells.has(key)) cell.classList.add('highlight-search');
+    else cell.classList.remove('highlight-search');
+  });
+}
+
+function jumpToCell(wh, r, c, l) {
+  openMapScreen(wh);
+  setTimeout(() => { openModal(wh, r, c, l); }, 200);
+}
+
+function openMapScreen(wh) {
+  G.activeWh = wh;
+  $('mapScreen').classList.add('active');
+  switchMapTab(wh);
+}
+
+function closeMapScreen() { 
+  $('mapScreen').classList.remove('active'); 
+  $('mapSearchInput').value = '';
+  filterMapCells();
+}
+
+function switchMapTab(wh) {
+  G.activeWh = wh;
+  document.querySelectorAll('.map-tab-btn').forEach(b => b.classList.remove('active'));
+  $(`tab-btn-${wh}`).classList.add('active');
+  $('map-container-12').style.display = (wh === '12') ? 'flex' : 'none';
+  $('map-container-11').style.display = (wh === '11') ? 'flex' : 'none';
+  setTimeout(() => { resetZoom(wh); }, 50);
+}
+
+function renderAllRacks(wh) {
+  let rowsCount = (wh === '12') ? 20 : 24;
+  let colsCount = (wh === '12') ? 90 : 102;
+  let groups = [[1]];
+  for (let i = 2; i < rowsCount; i += 2) groups.push([i, i + 1]);
+  if (rowsCount % 2 === 0) groups.push([rowsCount]); 
+
+  let mapHtml = `<div class="map-wrapper" id="map-wrapper-${wh}"><div class="y-axis"><div class="corner-header">№</div><div class="y-labels">`;
+  for(let c = colsCount; c >= 1; c--) mapHtml += `<div class="y-label ${(c % 3 === 1 && c !== 1) ? 'sep' : ''}">${c}</div>`;
+  mapHtml += `</div></div><div class="map-content">`;
+  
+  groups.forEach(group => {
+    mapHtml += `<div class="aisle-group">`;
+    group.forEach((r, idxInGroup) => {
+      let available = getAvailableLevels(wh, r);
+      let currentLevels = (group.length === 1 || idxInGroup === 1) ? [...available].reverse() : available;
+      mapHtml += `<div class="rack-vertical"><div class="rack-header"><div class="rack-title">Ряд ${r}</div><div class="levels-header">`;
+      currentLevels.forEach(lvl => mapHtml += `<span>${lvl}</span>`);
+      mapHtml += `</div></div><div class="rack-cells">`;
+      
+      for(let c = colsCount; c >= 1; c--) {
+        mapHtml += `<div class="cell-row ${(c % 3 === 1 && c !== 1) ? 'sep' : ''}">`;
+        currentLevels.forEach(lvl => {
+          let isMissing = (wh === '12') ? isMissing12(r, c, lvl) : isMissing11(r, c, lvl);
+          if (isMissing) {
+            mapHtml += `<div class="cell missing"></div>`;
+          } else {
+            let items = G.data[wh][r]?.[c]?.[lvl] || [];
+            let attrs = `data-wh="${wh}" data-r="${r}" data-c="${c}" data-l="${lvl}"`;
+            if (items.length === 0) {
+              mapHtml += `<div class="cell empty" ${attrs} title="Пусто"></div>`;
+            } else {
+              let minOsg = Math.min(...items.map(i => i.osg));
+              let badge = items.length > 1 ? '<div class="multi-badge"></div>' : '';
+              let title = `ОСГ: ${minOsg.toFixed(1)}%\nТовар: ${items[0].name.substring(0,35)}...`;
+              mapHtml += `<div class="cell" ${attrs} style="background:${getOsgColor(minOsg)}" title="${title}" onclick="openModal('${wh}', ${r}, ${c}, '${lvl}')">${badge}</div>`;
+            }
+          }
+        });
+        mapHtml += `</div>`;
+      }
+      mapHtml += `</div></div>`;
+    });
+    mapHtml += `</div>`;
+  });
+  
+  mapHtml += `</div></div><div class="loupe" id="loupe-${wh}"><div class="loupe-hud" id="loupe-hud-${wh}"></div><div class="loupe-clone-wrapper" id="loupe-clone-${wh}"></div></div>`;
+  $(`map-container-${wh}`).innerHTML = mapHtml;
+  
+  let clonedMap = $(`map-wrapper-${wh}`).cloneNode(true);
+  clonedMap.id = ''; 
+  $(`loupe-clone-${wh}`).appendChild(clonedMap);
+  initZoomLogic(wh);
+}
+
+function resetZoom(wh) {
+  let wrapper = $(`map-wrapper-${wh}`), container = $(`map-container-${wh}`);
+  if (!container || !wrapper) return;
+  wrapper.style.transform = 'none';
+  if (window.innerWidth <= 768) return;
+  
+  let wWidth = wrapper.offsetWidth, wHeight = wrapper.offsetHeight;
+  let cRect = container.getBoundingClientRect();
+  let scaleX = cRect.width / wWidth;
+  let scaleY = cRect.height / wHeight;
+  let fitScale = Math.min(scaleX, scaleY, 1) * 0.94;
+  
+  zoomState[wh] = fitScale;
+  wrapper.style.transform = `scale(${fitScale})`;
+}
+
+function initZoomLogic(wh) {
+  let container = $(`map-container-${wh}`), baseWrapper = $(`map-wrapper-${wh}`);
+  let loupe = $(`loupe-${wh}`), cloneWrap = $(`loupe-clone-${wh}`), hud = $(`loupe-hud-${wh}`);
+  if (!container || !baseWrapper || !loupe) return;
+  
+  setTimeout(() => resetZoom(wh), 100);
+  window.addEventListener('resize', () => resetZoom(wh));
+
+  container.addEventListener('mousemove', (e) => {
+    if (window.innerWidth <= 768) return;
+    let baseRect = baseWrapper.getBoundingClientRect();
+    let dx = e.clientX - baseRect.left, dy = e.clientY - baseRect.top;
+    
+    if (dx < -10 || dy < -10 || dx > baseRect.width + 10 || dy > baseRect.height + 10) {
+      loupe.style.display = 'none'; return;
+    }
+    loupe.style.display = 'block';
+
+    let cRect = container.getBoundingClientRect();
+    let loupeSize = 320;
+    loupe.style.transform = `translate(${e.clientX - cRect.left - loupeSize/2}px, ${e.clientY - cRect.top - loupeSize/2}px)`;
+
+    let curScale = zoomState[wh] || 1, targetScale = curScale * 2.5;
+    cloneWrap.style.transform = `translate(${loupeSize/2 - (dx/curScale)*targetScale}px, ${loupeSize/2 - (dy/curScale)*targetScale}px) scale(${targetScale})`;
+
+    let elem = document.elementFromPoint(e.clientX, e.clientY);
+    if (elem && elem.classList.contains('cell')) {
+      let r = elem.dataset.r, c = elem.dataset.c, l = elem.dataset.l;
+      if (r && c && l) hud.textContent = `Ряд ${r} • Ячейка ${String(c).padStart(3,'0')} • Ярус ${l}`;
+    }
+  });
+
+  container.addEventListener('mouseleave', () => loupe.style.display = 'none');
+}
+
+function openModal(wh, r, c, l) {
+  window.currentActiveCellEl = document.querySelector(`#map-container-${wh} .cell[data-wh="${wh}"][data-r="${r}"][data-c="${c}"][data-l="${l}"]`);
+  
+  let items = G.data[wh]?.[r]?.[c]?.[l] || [];
+  let modal = $('modalOverlay'), card = document.querySelector('.modal-card');
+  let title = $('modalTitle'), sub = $('modalSub'), tabs = $('modalTabs'), header = $('modalHeader');
+  
+  title.textContent = `Ячейка ${wh === '12' ? '12' : 'Z'}-${String(r).padStart(3,'0')}-${String(c).padStart(3,'0')}${l}`;
+  sub.textContent = `Склад ${wh} • Ряд ${r}, Место ${c}, Ярус ${l}`;
+  
+  if (items.length === 0) {
+    tabs.style.display = 'none'; header.style.background = '#1e293b';
+    $('modalBody').innerHTML = `<div style="text-align:center; padding:30px; color:#64748b; font-weight:600;">Ячейка пуста</div>`;
+  } else {
+    let minOsg = Math.min(...items.map(i => i.osg));
+    header.style.background = getOsgColor(minOsg);
+    if (items.length > 1) {
+      tabs.style.display = 'flex';
+      tabs.innerHTML = items.map((it, idx) => `<div class="m-tab ${idx === 0 ? 'active' : ''}" onclick="switchModalTab(${idx})">${it.container || 'Без контейнера'}</div>`).join('');
+    } else tabs.style.display = 'none';
+    window.currentModalItems = items;
+    renderModalItem(0);
+  }
+
+  card.classList.remove('shrinking');
+  card.style.transform = '';
+  card.style.opacity = '';
+  modal.style.opacity = '';
+  
+  requestAnimationFrame(() => modal.classList.add('active'));
+}
+
+function switchModalTab(idx) {
+  document.querySelectorAll('.m-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  renderModalItem(idx);
+}
+
+function renderModalItem(idx) {
+  let item = window.currentModalItems[idx];
+  if (!item) return;
+  $('modalBody').innerHTML = `
+    <div class="info-row"><div class="info-label">Наименование товара</div><div class="info-value" style="font-weight:700;">${item.name || '—'}</div></div>
+    <div class="info-grid">
+      <div class="info-row"><div class="info-label">Артикул</div><div class="info-value">${item.article || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Контейнер</div><div class="info-value">${item.container || '—'}</div></div>
+    </div>
+    <div class="info-grid">
+      <div class="info-row"><div class="info-label">Остаточный срок годности</div><div class="info-value" style="color:${getOsgColor(item.osg)}; font-weight:800;">${item.osg.toFixed(1)}%</div></div>
+      <div class="info-row"><div class="info-label">Партия</div><div class="info-value">${item.batch || '—'}</div></div>
+    </div>
+    <div class="info-grid">
+      <div class="info-row"><div class="info-label">Дата производства</div><div class="info-value">${item.prodDate || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Фасовка</div><div class="info-value">${item.packSize || '—'}</div></div>
+    </div>
+    <div class="info-grid">
+      <div class="info-row"><div class="info-label">Количество (упаковки)</div><div class="info-value">${item.packsCount || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Количество (штуки)</div><div class="info-value">${item.piecesCount || '—'}</div></div>
+    </div>
+  `;
+}
+
+function closeModal() { 
+  let overlay = $('modalOverlay');
+  let card = document.querySelector('.modal-card');
+  let cell = window.currentActiveCellEl;
+
+  if (cell && $('mapScreen').classList.contains('active')) {
+    let cellRect = cell.getBoundingClientRect();
+    let cardRect = card.getBoundingClientRect();
+
+    let tx = (cellRect.left + cellRect.width / 2) - (cardRect.left + cardRect.width / 2);
+    let ty = (cellRect.top + cellRect.height / 2) - (cardRect.top + cardRect.height / 2);
+
+    card.classList.add('shrinking');
+    card.style.transform = `translate(${tx}px, ${ty}px) scale(0.02)`;
+    card.style.opacity = '0';
+    overlay.style.opacity = '0';
+
+    let cellSelector = `.cell[data-wh="${cell.dataset.wh}"][data-r="${cell.dataset.r}"][data-c="${cell.dataset.c}"][data-l="${cell.dataset.l}"]`;
+    let cellsToHighlight = document.querySelectorAll(cellSelector);
+
+    setTimeout(() => {
+      overlay.classList.remove('active');
+      card.classList.remove('shrinking');
+      card.style.transform = '';
+      card.style.opacity = '';
+      overlay.style.opacity = '';
+
+      cellsToHighlight.forEach(c => c.classList.add('last-opened'));
+      setTimeout(() => cellsToHighlight.forEach(c => c.classList.remove('last-opened')), 2500);
+      
+    }, 400);
+
+  } else {
+    overlay.classList.remove('active'); 
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  fetch('ostatok.xlsx')
+    .then(res => {
+      if (!res.ok) throw new Error('Файл не найден');
+      let lastMod = res.headers.get('Last-Modified');
+      let dateStr = lastMod ? new Date(lastMod).toLocaleString('ru-RU') : new Date().toLocaleDateString('ru-RU');
+      return res.arrayBuffer().then(ab => ({ ab, dateStr }));
+    })
+    .then(({ ab, dateStr }) => {
+      let wb = XLSX.read(ab, { type: 'array' });
+      processWB(wb, dateStr);
+    })
+    .catch(err => {
+      console.log('Ошибка:', err);
+      $('statusTitle').textContent = 'Ошибка загрузки';
+      $('statusTitle').style.color = '#ffcccc';
+    });
+});
+</script>
+</body>
+</html>

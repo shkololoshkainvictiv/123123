@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Счётные листы инвентаризации</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, .06); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(61, 90, 158, .35); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(61, 90, 158, .55); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e4e5eb; color: #2a2a3a; min-height: 100vh; overflow-x: hidden; user-select: none; -webkit-user-select: none; }
+
+.dashboard-container { max-width: 1400px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; position: relative; }
+
+.back-btn {
+  position: fixed; top: 20px; left: 20px; width: 46px; height: 46px;
+  border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 7px 9px 20px rgba(30, 30, 60, .16); transition: all .25s; z-index: 1000; text-decoration: none;
+}
+.back-btn:hover { background: rgba(61, 90, 158, .08); transform: translateY(-2px); box-shadow: 9px 12px 26px rgba(30, 30, 60, .22); }
+.back-btn:active { transform: translateX(-1px); }
+.back-btn svg { width: 22px; height: 22px; fill: #3d5a9e; }
+
+.header {
+  text-align: center; margin-bottom: 28px; padding: 24px 20px;
+  background: linear-gradient(135deg, #e85a1e, #ff6f32 50%, #ff8855);
+  border-radius: 16px; box-shadow: 8px 12px 28px rgba(200, 70, 20, .35);
+  position: relative; overflow: hidden;
+}
+.header::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, .1) 0%, transparent 60%); pointer-events: none;
+}
+.header::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .25), transparent);
+}
+
+.header-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 14px;
+  background: rgba(255, 255, 255, .15); backdrop-filter: blur(4px);
+  margin-bottom: 12px; border: 1px solid rgba(255, 255, 255, .2);
+  box-shadow: 4px 6px 14px rgba(0, 0, 0, .18);
+  color: #fff;
+}
+.header-icon svg { width: 28px; height: 28px; }
+.header h1 { font-size: 25px; color: #fff; font-weight: 700; position: relative; }
+.header .subtitle { font-size: 15px; color: rgba(255, 255, 255, .9); margin-top: 6px; position: relative; display: inline-block; font-weight: 500; }
+
+.header-actions-right { position: absolute; top: 20px; right: 20px; z-index: 10; }
+.status-badge { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.15); padding: 8px 16px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.15); font-size: 13px; font-weight: 600; color: #fff; }
+.status-indicator { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.card { background: #fff; border-radius: 16px; padding: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 18px rgba(30,30,60,0.04); display: flex; flex-direction: column; gap: 14px; }
+.card-title { font-size: 18px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.settings-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+.lbl { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; }
+.inp, .sel { width: 100%; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 14px; background: #f8fafc; color: #334155; font-weight: 600; outline: none; transition: border-color 0.2s; }
+.inp:focus, .sel:focus { border-color: #ff6f32; background: #fff; box-shadow: 0 0 0 3px rgba(255,111,50,0.1); }
+.inp-small { width: 80px; text-align: center; }
+
+.wh-selector { display: flex; gap: 8px; background: #f1f5f9; padding: 4px; border-radius: 10px; }
+.wh-btn { flex: 1; padding: 10px 16px; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; background: transparent; color: #64748b; cursor: pointer; transition: all 0.2s; }
+.wh-btn.active { background: #fff; color: #e85a1e; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+.radio-group { display: flex; gap: 6px; background: #f1f5f9; padding: 4px; border-radius: 10px; flex-wrap: wrap; }
+.radio-btn { flex: 1; min-width: 120px; padding: 8px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; background: transparent; color: #64748b; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.radio-btn.active { background: #fff; color: #e85a1e; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+.checkbox-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s; user-select: none; -webkit-user-select: none; }
+.checkbox-item:hover { border-color: #ff6f32; background: #fff; }
+.checkbox-item.checked { border-color: #e85a1e; background: #fff3e0; }
+.checkbox-item input { display: none; }
+.check-box { width: 16px; height: 16px; border: 2px solid #cbd5e1; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.checkbox-item.checked .check-box { background: #e85a1e; border-color: #e85a1e; }
+.check-box svg { width: 10px; height: 10px; fill: #fff; opacity: 0; transition: opacity 0.2s; }
+.checkbox-item.checked .check-box svg { opacity: 1; }
+.checkbox-item span { font-size: 13px; font-weight: 600; color: #334155; }
+
+.col-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip {
+  padding: 8px 14px; border-radius: 20px; border: 1.5px solid #cbd5e1;
+  background: #f8fafc; color: #94a3b8; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
+  text-decoration: line-through;
+}
+.chip.on { border-color: #e85a1e; background: #fff3e0; color: #e85a1e; text-decoration: none; }
+.chip.on:hover { background: #ffe8d9; }
+.lock-ic { font-size: 12px; line-height: 1; }
+
+.preview-hint { font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 8px; }
+.preview-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; -webkit-overflow-scrolling: touch; }
+.preview-table { width: max-content; min-width: 100%; }
+.preview-table tr.data-row { height: auto; }
+.preview-table td { padding: 10px 12px !important; min-width: 40px; }
+.preview-table th, .preview-table td { cursor: pointer; transition: filter .15s; }
+.preview-table th:hover, .preview-table td:hover { filter: brightness(0.92); }
+.preview-table th.col-locked, .preview-table td.col-locked { cursor: not-allowed; }
+.preview-table th.col-locked:hover, .preview-table td.col-locked:hover { filter: none; }
+
+.btn-generate {
+  width: 100%; padding: 18px; border: none; border-radius: 14px;
+  background: linear-gradient(135deg, #e85a1e, #ff6f32);
+  color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 6px 20px rgba(232, 90, 30, 0.35);
+  transition: all 0.25s ease;
+  letter-spacing: 0.3px;
+}
+.btn-generate:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(232, 90, 30, 0.45); }
+.btn-generate:active { transform: translateY(0); }
+.btn-generate:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btn-generate svg { width: 20px; height: 20px; fill: #fff; }
+
+.print-view { display: none; }
+
+.print-view-toolbar {
+  position: fixed; top: 20px; right: 20px; z-index: 1000;
+  display: flex; gap: 10px;
+}
+.tool-btn {
+  padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer;
+  font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15); transition: all 0.2s;
+}
+.tool-btn-back { background: #2a2c38; color: #fff; border: 1px solid #3a3d4e; }
+.tool-btn-back:hover { background: #353847; transform: translateX(-2px); }
+.tool-btn-print { background: #e85a1e; color: #fff; }
+.tool-btn-print:hover { background: #d04d15; transform: translateY(-2px); }
+.tool-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+.page-preview {
+  background: #fff;
+  width: 210mm;
+  height: 297mm;
+  margin: 20px auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  break-after: page;
+}
+
+.page-preview.new-group {
+  page-break-before: always;
+  break-before: page;
+}
+
+.page-header-left {
+  position: absolute;
+  top: 4mm;
+  left: 5mm;
+  font-size: 9pt;
+  color: #333;
+  font-weight: 600;
+}
+
+.page-header-right {
+  position: absolute;
+  top: 4mm;
+  right: 5mm;
+  font-size: 9pt;
+  color: #333;
+  font-weight: 600;
+}
+
+.page-content {
+  position: absolute;
+  top: 12mm;
+  left: 5mm;
+  right: 5mm;
+  bottom: 14mm;
+  overflow: hidden;
+}
+
+.page-table-wrapper { width: 100%; }
+
+.table-scale-wrap { position: relative; }
+.table-scale-wrap table { transform-origin: top left; }
+
+.page-signatures {
+  position: absolute;
+  left: 5mm;
+  right: 5mm;
+  bottom: 4mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.sig {
+  display: flex;
+  align-items: flex-end;
+  gap: 3mm;
+  font-size: 9pt;
+  color: #333;
+  font-weight: 500;
+}
+.sig-line {
+  display: inline-block;
+  width: 40mm;
+  border-bottom: 1px solid #333;
+  margin-bottom: 2px;
+}
+
+.print-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+.print-table th {
+  background: #e85a1e !important;
+  color: #fff !important;
+  font-weight: bold !important;
+  padding: 6px 4px !important;
+  border: 1px solid #333 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  white-space: nowrap;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.print-table td {
+  padding: 4px 6px !important;
+  border: 1px solid #333 !important;
+  vertical-align: middle !important;
+  overflow: hidden;
+  box-sizing: border-box;
+  line-height: 1.3;
+}
+.print-table tr.data-row { height: 60px; }
+.print-table tr.separator-row { height: 15px; }
+.print-table tr.separator-row td { border: none !important; padding: 0 !important; }
+
+.print-table .col-cell,
+.print-table .col-article,
+.print-table .col-status,
+.print-table .col-prodDate,
+.print-table .col-expiry,
+.print-table .col-upCount {
+  white-space: nowrap;
+}
+
+.print-table .col-cell { font-weight: bold; text-align: center; }
+.print-table .col-article { font-weight: bold; }
+.print-table .col-status { text-align: center; }
+.print-table .col-prodDate { font-weight: bold; text-align: center; }
+.print-table .col-expiry { text-align: center; }
+.print-table .col-upCount { text-align: center; }
+
+@media print {
+  html, body { width: 210mm; height: 297mm; background: white; margin: 0; padding: 0; }
+  .dashboard-container, .back-btn, .print-view-toolbar { display: none !important; }
+  .print-view { display: block !important; padding: 0 !important; margin: 0 !important; }
+  .page-preview {
+    box-shadow: none !important;
+    margin: 0 !important;
+    transform: none !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .page-preview.new-group {
+    page-break-before: always;
+    break-before: page;
+  }
+  .page-preview:last-child { page-break-after: auto; break-after: auto; }
+  @page { size: A4 portrait; margin: 0; }
+}
+
+@media screen and (max-width: 768px) {
+  .dashboard-container { padding: 12px; padding-top: 70px; }
+  .back-btn { top: 12px; left: 12px; width: 42px; height: 42px; border-radius: 10px; }
+  .header-actions-right { top: 14px; right: 14px; }
+  .page-preview { transform: scale(0.5); transform-origin: top center; margin-bottom: -400px; }
+}
+</style>
+</head>
+<body>
+
+<a href="http://okkam.space" class="back-btn" title="Главное меню">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="dashboard-container" id="dashboardView">
+  <header class="header">
+    <div class="header-actions-right">
+      <div class="status-badge" id="statusBadge">
+        <div class="status-indicator"></div>
+        <span id="statusTitle">Загрузка...</span>
+      </div>
+    </div>
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    </div>
+    <h1>Счётные листы инвентаризации</h1>
+    <p class="subtitle">формирование листов просчёта по ячейкам склада</p>
+  </header>
+
+  <div class="card">
+    <div class="card-title">⚙️ Параметры формирования</div>
+
+    <div class="settings-grid">
+      <div>
+        <label class="lbl">Зона просчёта</label>
+        <div class="wh-selector">
+          <button class="wh-btn active" data-wh="12" onclick="selectWh('12')">Склад 12</button>
+          <button class="wh-btn" data-wh="11" onclick="selectWh('11')">Склад 11</button>
+          <button class="wh-btn" data-wh="fridge" onclick="selectWh('fridge')">Холодильник</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="lbl">Диапазон рядов</label>
+        <div class="settings-row">
+          <input type="number" class="inp inp-small" id="rowFrom" value="1" min="1" max="20" oninput="onRangeChange()">
+          <span style="color:#94a3b8; font-weight:700;">—</span>
+          <input type="number" class="inp inp-small" id="rowTo" value="20" min="1" max="20" oninput="onRangeChange()">
+        </div>
+      </div>
+
+      <div>
+        <label class="lbl">Режим</label>
+        <div class="radio-group">
+          <button class="radio-btn active" data-mode="with-goods" onclick="selectMode('with-goods')">Только с товаром</button>
+          <button class="radio-btn" data-mode="all-cells" onclick="selectMode('all-cells')">Все ячейки</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="lbl">Партия</label>
+        <div class="radio-group">
+          <button class="radio-btn" data-batch="full" onclick="selectBatch('full')">Полная</button>
+          <button class="radio-btn active" data-batch="lot-only" onclick="selectBatch('lot-only')">Только лот</button>
+        </div>
+      </div>
+
+      <div style="grid-column: 1 / -1;">
+        <label class="lbl">Фильтр статусов (для режима «Только с товаром»)</label>
+        <div class="col-chips" id="statusChips">
+          <span style="font-size:13px; color:#888; font-weight:600;">Загрузка...</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label class="lbl">Состав столбцов</label>
+      <div class="preview-hint">Клик по столбцу в строке ниже скрывает его из просчёта. Скрытые столбцы возвращаются кнопками «＋». Столбцы с 🔒 скрыть нельзя.</div>
+      <div class="col-chips" id="colChips" style="margin-bottom: 12px;"></div>
+      <div class="preview-wrap" id="previewWrap">
+        <div style="padding: 20px; text-align: center; color: #888; font-size: 13px; font-weight: 600;">Загрузка данных из ostatok.xlsx...</div>
+      </div>
+    </div>
+
+    <div class="settings-row" style="justify-content: space-between;">
+      <label class="checkbox-item checked" id="separatorToggle" onclick="toggleSeparator()">
+        <input type="checkbox" checked>
+        <div class="check-box"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+        <span>Разделители между строками (15px)</span>
+      </label>
+    </div>
+
+    <button class="btn-generate" id="btnGenerate" onclick="generateSheets()">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM13 9V3.5L18.5 9H13z"/></svg>
+      <span>Сформировать листы</span>
+    </button>
+  </div>
+</div>
+
+<div class="print-view" id="printView">
+  <div class="print-view-toolbar">
+    <button class="tool-btn tool-btn-back" onclick="backToSettings()">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+      <span>Настройки</span>
+    </button>
+    <button class="tool-btn tool-btn-print" onclick="window.print()">
+      <svg viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+      <span>Печать</span>
+    </button>
+  </div>
+  <div id="pagesContainer"></div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+const MM = 3.7795;
+const PAGE_W_MM = 210;
+const PAGE_H_MM = 297;
+const SIDE_MM = 5;
+const TOP_MM = 12;
+const BOTTOM_RESERVE_MM = 14;
+const THEAD_H_PX = 40;
+const PAGE_SAFETY_PX = 20;
+
+const ZONE_LIMITS = { '12': [1, 20], '11': [1, 24], 'fridge': [19, 24] };
+const ZONE_TITLES = { '12': 'Склад 12', '11': 'Склад 11', 'fridge': 'Холодильник (Склад 11)' };
+
+const COLUMNS_CONFIG = [
+  { key: 'level', label: 'Ярус', font: 14, align: 'center' },
+  { key: 'cell', label: 'Ячейка', font: 20, bold: true, align: 'center', nowrap: true, locked: true },
+  { key: 'article', label: 'Артикул', font: 16, bold: true, nowrap: true, locked: true },
+  { key: 'name', label: 'Наименование', font: 14, cap: 240, min: 130, locked: true },
+  { key: 'status', label: 'Статус', font: 14, align: 'center', nowrap: true },
+  { key: 'batch', label: 'Партия', font: 14, cap: 150, min: 90 },
+  { key: 'prodDate', label: 'Дата производства', font: 14, bold: true, align: 'center', nowrap: true },
+  { key: 'expiry', label: 'Срок годности', font: 14, align: 'center', nowrap: true },
+  { key: 'pack', label: 'Упаковка', font: 14, align: 'center', cap: 90, min: 60 },
+  { key: 'upCount', label: 'УП Факт', font: 14, fixedWidth: 45, align: 'center', nowrap: true, locked: true }
+];
+
+const state = {
+  data: { '12': {}, '11': {} },
+  allItems: [],
+  sampleItem: null,
+  zone: '12',
+  mode: 'with-goods',
+  batchMode: 'lot-only',
+  separator: true,
+  enabledColumns: COLUMNS_CONFIG.map(c => c.key),
+  ranges: { '12': [1, 20], '11': [1, 24], 'fridge': [19, 24] },
+  statusIdx: 6,
+  expiryIdx: 9,
+  statusList: [],
+  allowedStatuses: new Set()
+};
+
+function $(id) { return document.getElementById(id); }
+
+function isMissing12(row, col, lvl) {
+  if (row === 1) return col < 1 || col > 90;
+  if (row >= 2 && row <= 19) {
+    if (col < 1 || col > 87) return true;
+    if (col >= 43 && col <= 45) return !['D','E','F'].includes(lvl);
+    return false;
+  }
+  if (row === 20) return col < 1 || col > 90;
+  return true;
+}
+
+function isMissing11(row, col, lvl) {
+  if (row === 1) {
+    if (col < 1 || col > 102) return true;
+    return !['A','E','F','G','H','K'].includes(lvl);
+  }
+  if (row === 2) {
+    if (col < 1 || col > 102) return true;
+    if (col >= 46 && col <= 48) return !['F','G','H','K'].includes(lvl);
+    if (col >= 1 && col <= 24) return !['A','B','C','E','F','G','H','K'].includes(lvl);
+    return !['A','B','E','F','G','H','K'].includes(lvl);
+  }
+  if (row >= 3 && row <= 11) {
+    if (col < 1 || col > 102) return true;
+    if (col >= 46 && col <= 48) return !['F','G','H','K'].includes(lvl);
+    return !['A','E','F','G','H','K'].includes(lvl);
+  }
+  if (row >= 12 && row <= 17) {
+    if (col < 7 || col > 102) return true;
+    if (col >= 46 && col <= 48) return !['F','G','H','K'].includes(lvl);
+    return !['A','E','F','G','H','K'].includes(lvl);
+  }
+  if (row === 18) {
+    if (col < 1 || col > 102) return true;
+    if (col >= 61 && col <= 63) return !['G','H','K'].includes(lvl);
+    return !['A','E','F','G','H','K'].includes(lvl);
+  }
+  if (row === 19) {
+    if (col >= 1 && col <= 57) return !['A','B','E','F','G','H','K'].includes(lvl);
+    if (col >= 61 && col <= 63) return !['G','H','K'].includes(lvl);
+    if (col >= 64 && col <= 102) return !['A','E','F','G','H','K'].includes(lvl);
+    return true;
+  }
+  if (row >= 20 && row <= 22) {
+    if ((col >= 19 && col <= 21) || (col >= 40 && col <= 42) || (col >= 61 && col <= 63))
+      return !['G','H','K'].includes(lvl);
+    if ((col >= 1 && col <= 18) || (col >= 22 && col <= 39) || (col >= 43 && col <= 57))
+      return !['A','E','F','G','H','K'].includes(lvl);
+    if (col >= 64 && col <= 96) return !['A','E','F','G','H','K'].includes(lvl);
+    return true;
+  }
+  if (row === 23) {
+    if ((col >= 19 && col <= 21) || (col >= 40 && col <= 42)) return !['G','H','K'].includes(lvl);
+    if ((col >= 1 && col <= 18) || (col >= 22 && col <= 39)) return !['A','E','F','G','H','K'].includes(lvl);
+    if (col >= 43 && col <= 57) return !['A','B','E','F','G','H','K'].includes(lvl);
+    if (col >= 64 && col <= 96) return !['A','E','F','G','H','K'].includes(lvl);
+    return true;
+  }
+  if (row === 24) {
+    if (col >= 1 && col <= 39) return !['A','E','F','G','H','K'].includes(lvl);
+    if (col >= 40 && col <= 42) return !['B','E','F','G','H','K'].includes(lvl);
+    if (col >= 43 && col <= 45) return !['E','F','G','H','K'].includes(lvl);
+    if (col >= 46 && col <= 57) return !['A','B','E','F','G','H','K'].includes(lvl);
+    if (col >= 61 && col <= 96) return !['A','E','F','G','H','K'].includes(lvl);
+    return true;
+  }
+  return true;
+}
+
+function extractLot(batch) {
+  if (!batch) return '';
+  const match = String(batch).match(/(ELOT[-_]?|LOT[-_]?)(\d[\d-]*)/i);
+  return match ? match[1] + match[2] : String(batch);
+}
+
+function parseCellId(raw) {
+  if (raw === null || raw === undefined) return null;
+  let s = String(raw).toUpperCase().trim();
+  if (!s) return null;
+  s = s.replace(/[\s_\.\/–—−]+/g, '-').replace(/-{2,}/g, '-');
+  let m = s.match(/^(12|11|Z)-(\d{1,3})-(\d{1,3})-?([A-FGHK])$/);
+  if (!m) m = s.match(/^(12|11|Z)-?(\d{3})-?(\d{3})-?([A-FGHK])$/);
+  if (!m) m = s.match(/^(12|11|Z)(\d{3})(\d{3})([A-FGHK])$/);
+  if (!m) return null;
+  return {
+    wh: m[1] === '12' ? '12' : '11',
+    r: parseInt(m[2], 10),
+    c: parseInt(m[3], 10),
+    l: m[4],
+    id: s
+  };
+}
+
+function hideColumn(key) {
+  const col = COLUMNS_CONFIG.find(c => c.key === key);
+  if (!col || col.locked) return;
+  const idx = state.enabledColumns.indexOf(key);
+  if (idx >= 0) state.enabledColumns.splice(idx, 1);
+  renderRestoreChips();
+  renderPreview();
+}
+
+function restoreColumn(key) {
+  if (!state.enabledColumns.includes(key)) state.enabledColumns.push(key);
+  renderRestoreChips();
+  renderPreview();
+}
+
+function toggleStatusIdx(i) {
+  const key = state.statusList[i];
+  if (state.allowedStatuses.has(key)) state.allowedStatuses.delete(key);
+  else state.allowedStatuses.add(key);
+  renderStatusChips();
+}
+
+function toggleSeparator() {
+  state.separator = !state.separator;
+  const el = $('separatorToggle');
+  if (state.separator) {
+    el.classList.add('checked');
+    el.querySelector('input').checked = true;
+  } else {
+    el.classList.remove('checked');
+    el.querySelector('input').checked = false;
+  }
+}
+
+function selectWh(zone) {
+  state.zone = zone;
+  document.querySelectorAll('.wh-btn').forEach(b => b.classList.toggle('active', b.dataset.wh === zone));
+  const [mn, mx] = ZONE_LIMITS[zone];
+  const [f, t] = state.ranges[zone];
+  $('rowFrom').min = mn; $('rowFrom').max = mx; $('rowFrom').value = f;
+  $('rowTo').min = mn; $('rowTo').max = mx; $('rowTo').value = t;
+}
+
+function onRangeChange() {
+  const zone = state.zone;
+  const [mn, mx] = ZONE_LIMITS[zone];
+  let f = parseInt($('rowFrom').value); if (isNaN(f)) f = mn;
+  let t = parseInt($('rowTo').value); if (isNaN(t)) t = mx;
+  f = Math.max(mn, Math.min(mx, f));
+  t = Math.max(mn, Math.min(mx, t));
+  if (f > t) { const tmp = f; f = t; t = tmp; }
+  state.ranges[zone] = [f, t];
+}
+
+function selectMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll('.radio-btn[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+}
+
+function selectBatch(batch) {
+  state.batchMode = batch;
+  document.querySelectorAll('.radio-btn[data-batch]').forEach(b => b.classList.toggle('active', b.dataset.batch === batch));
+  renderPreview();
+}
+
+function processWB(wb, lastModifiedDate) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) throw new Error('Лист пуст');
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+
+  let statusIdx = 6;
+  let expiryIdx = 9;
+  if (rows.length > 0 && Array.isArray(rows[0])) {
+    rows[0].forEach((h, i) => {
+      const hStr = String(h || '').toLowerCase().trim();
+      if (hStr.includes('статус')) statusIdx = i;
+      if (hStr.includes('срок') && (hStr.includes('годн') || hStr.includes('дат'))) expiryIdx = i;
+    });
+  }
+  state.statusIdx = statusIdx;
+  state.expiryIdx = expiryIdx;
+
+  for (let i = 1; i <= 20; i++) state.data['12'][i] = {};
+  for (let i = 1; i <= 24; i++) state.data['11'][i] = {};
+  state.allItems = [];
+
+  rows.forEach(row => {
+    if (!row || row.length < 5) return;
+    const parsed = parseCellId(row[0]);
+    if (!parsed) return;
+
+    const wh = parsed.wh;
+    const r = parsed.r;
+    const c = parsed.c;
+    const l = parsed.l;
+
+    if (r < 1 || r > 24 || c < 1 || c > 102) return;
+
+    if (!state.data[wh][r]) state.data[wh][r] = {};
+    if (!state.data[wh][r][c]) state.data[wh][r][c] = {};
+    if (!state.data[wh][r][c][l]) state.data[wh][r][c][l] = [];
+
+    const g = (idx) => String(row[idx] || '').trim();
+
+    const item = {
+      wh, cellId: parsed.id, r, c, l,
+      container: g(1),
+      article: g(3),
+      name: g(4),
+      status: g(statusIdx),
+      batch: g(7),
+      prodDate: g(8),
+      expiryDate: g(expiryIdx),
+      packSize: g(10),
+      osg: parseFloat(String(row[12] || '0').replace('%','').replace(',','.')) || 0,
+      packsCount: g(13),
+      piecesCount: g(16)
+    };
+
+    state.data[wh][r][c][l].push(item);
+    state.allItems.push(item);
+  });
+
+  const statusSet = new Set();
+  state.allItems.forEach(it => {
+    const v = String(it.status || '').trim();
+    if (v) statusSet.add(v);
+  });
+  state.statusList = Array.from(statusSet).sort();
+  state.allowedStatuses = new Set(state.statusList);
+
+  let lotCandidate = null, lotScore = -1, anyCandidate = null, anyScore = -1;
+  state.allItems.forEach(it => {
+    const r = buildRowFromItem(it);
+    let score = 0;
+    COLUMNS_CONFIG.forEach(c => { if (String(r[c.key] || '').trim()) score++; });
+    if (score > anyScore) { anyScore = score; anyCandidate = it; }
+    if (/(ELOT|LOT)/i.test(it.batch || '')) {
+      if (score > lotScore) { lotScore = score; lotCandidate = it; }
+    }
+  });
+  state.sampleItem = lotCandidate || anyCandidate;
+
+  const cnt12 = state.allItems.filter(i => i.wh === '12').length;
+  const cnt11 = state.allItems.filter(i => i.wh === '11').length;
+  $('statusTitle').textContent = `Обновлено: ${lastModifiedDate} | 12: ${cnt12} | 11: ${cnt11}`;
+  $('btnGenerate').disabled = false;
+
+  renderStatusChips();
+  renderRestoreChips();
+  renderPreview();
+}
+
+function buildRowFromItem(item) {
+  const batch = state.batchMode === 'lot-only' ? extractLot(item.batch) : (item.batch || '');
+  return {
+    level: item.l,
+    cell: item.cellId,
+    article: item.article,
+    name: item.name,
+    status: item.status || '',
+    batch: batch,
+    prodDate: item.prodDate,
+    expiry: item.expiryDate || '',
+    pack: item.packSize,
+    upCount: ''
+  };
+}
+
+function buildEmptyRow(r, c, l, wh) {
+  const prefix = wh === '12' ? '12' : 'Z';
+  return {
+    level: l,
+    cell: `${prefix}-${String(r).padStart(3,'0')}-${String(c).padStart(3,'0')}${l}`,
+    article: '',
+    name: '',
+    status: '',
+    batch: '',
+    prodDate: '',
+    expiry: '',
+    pack: '',
+    upCount: ''
+  };
+}
+
+function renderStatusChips() {
+  const wrap = $('statusChips');
+  if (!state.statusList.length) {
+    wrap.innerHTML = '<span style="font-size:13px; color:#888; font-weight:600;">Статусы в файле не найдены</span>';
+    return;
+  }
+  wrap.innerHTML = state.statusList.map((key, i) => {
+    const on = state.allowedStatuses.has(key);
+    return `<button class="chip ${on ? 'on' : ''}" onclick="toggleStatusIdx(${i})">${key}</button>`;
+  }).join('');
+}
+
+function renderRestoreChips() {
+  const wrap = $('colChips');
+  const hidden = COLUMNS_CONFIG.filter(c => !state.enabledColumns.includes(c.key));
+  if (!hidden.length) {
+    wrap.innerHTML = '<span style="font-size:13px; color:#888; font-weight:600;">Скрытых столбцов нет</span>';
+    return;
+  }
+  wrap.innerHTML = '<span style="font-size:13px; color:#64748b; font-weight:700;">Скрыто:</span>' +
+    hidden.map(col => `<button class="chip on" onclick="restoreColumn('${col.key}')" title="Вернуть столбец">＋ ${col.label}</button>`).join('');
+}
+
+function renderPreview() {
+  const wrap = $('previewWrap');
+  if (!state.sampleItem) {
+    wrap.innerHTML = `<div style="padding: 20px; text-align: center; color: #888; font-size: 13px; font-weight: 600;">Нет данных для предпросмотра</div>`;
+    return;
+  }
+  const row = buildRowFromItem(state.sampleItem);
+  const enabled = COLUMNS_CONFIG.filter(c => state.enabledColumns.includes(c.key));
+  let html = '<table class="print-table preview-table"><thead><tr>';
+  enabled.forEach(col => {
+    const lockedCls = col.locked ? ' col-locked' : '';
+    const lockIcon = col.locked ? '<span class="lock-ic">🔒</span>' : '';
+    html += `<th class="${lockedCls}" style="font-size:${Math.max(10, col.font - 3)}px;" onclick="hideColumn('${col.key}')" title="${col.locked ? 'Столбец нельзя скрыть' : 'Клик: скрыть столбец'}">${col.label}${lockIcon}</th>`;
+  });
+  html += '</tr></thead><tbody><tr class="data-row">';
+  enabled.forEach(col => {
+    const val = row[col.key] || '';
+    const lockedCls = col.locked ? ' col-locked' : '';
+    const bold = col.bold ? 'font-weight:bold;' : '';
+    const align = col.align ? `text-align:${col.align};` : '';
+    const nowrap = col.nowrap ? 'white-space:nowrap;' : '';
+    html += `<td class="col-${col.key}${lockedCls}" style="font-size:${col.font}px; ${bold}${align}${nowrap}" onclick="hideColumn('${col.key}')" title="${col.locked ? 'Столбец нельзя скрыть' : 'Клик: скрыть столбец'}">${val}</td>`;
+  });
+  html += '</tr></tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function gatherRowsForCell(zone, r, level) {
+  if (zone === 'fridge' && (r < 19 || r > 24)) return [];
+  const wh = zone === '12' ? '12' : '11';
+  const isMissing = zone === '12' ? isMissing12 : isMissing11;
+  let cMin = 1;
+  let cMax = zone === '12' ? 90 : 102;
+  if (zone === 'fridge') cMax = 56;
+  if (zone === '11' && r >= 19 && r <= 24) cMin = 57;
+
+  const rows = [];
+  for (let c = cMin; c <= cMax; c++) {
+    if (isMissing(r, c, level)) continue;
+    let cellItems = (state.data[wh]?.[r]?.[c]?.[level]) || [];
+    if (state.mode === 'with-goods' && state.statusList.length) {
+      cellItems = cellItems.filter(it => {
+        const v = String(it.status || '').trim();
+        if (!v) return true;
+        return state.allowedStatuses.has(v);
+      });
+    }
+    if (cellItems.length > 0) {
+      cellItems.forEach(item => rows.push(buildRowFromItem(item)));
+    } else if (state.mode === 'all-cells') {
+      rows.push(buildEmptyRow(r, c, level, wh));
+    }
+  }
+  return rows;
+}
+
+function measureTextWidth(text, font) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.font = font;
+  return ctx.measureText(String(text || '')).width;
+}
+
+function colFont(col) {
+  return `${col.bold ? 'bold ' : ''}${col.font}px Arial`;
+}
+
+function countLines(text, avail, font) {
+  const words = String(text).split(/\s+/).filter(Boolean);
+  if (!words.length) return 1;
+  const spaceW = measureTextWidth(' ', font);
+  let lines = 1;
+  let cur = 0;
+  words.forEach(w => {
+    const wW = measureTextWidth(w, font);
+    if (cur === 0) {
+      cur = wW;
+    } else if (cur + spaceW + wW <= avail) {
+      cur += spaceW + wW;
+    } else {
+      lines++;
+      cur = wW;
+    }
+  });
+  return lines;
+}
+
+function calculateColumnWidths(allRows) {
+  const enabled = COLUMNS_CONFIG.filter(c => state.enabledColumns.includes(c.key));
+  const widths = {};
+
+  enabled.forEach(col => {
+    const headerFont = `bold ${Math.max(10, col.font - 3)}px Arial`;
+    let maxW = measureTextWidth(col.label, headerFont);
+    allRows.forEach(row => {
+      const w = measureTextWidth(row[col.key] || '', colFont(col));
+      if (w > maxW) maxW = w;
+    });
+    let w = maxW + (col.cap ? 16 : 12);
+    if (col.fixedWidth) w = Math.max(col.fixedWidth, w);
+    if (col.cap) w = Math.min(w, col.cap);
+    widths[col.key] = Math.ceil(w);
+  });
+
+  const availWpx = (PAGE_W_MM - SIDE_MM * 2) * MM;
+  let sumW = Object.values(widths).reduce((a, b) => a + b, 0);
+
+  if (sumW > availWpx) {
+    const wrapCols = enabled.filter(c => c.cap);
+    const reducible = wrapCols.reduce((a, c) => a + Math.max(0, widths[c.key] - c.min), 0);
+    if (reducible > 0) {
+      const cut = Math.min(sumW - availWpx, reducible);
+      wrapCols.forEach(c => {
+        const room = Math.max(0, widths[c.key] - c.min);
+        widths[c.key] -= Math.floor(cut * room / reducible);
+      });
+      sumW = Object.values(widths).reduce((a, b) => a + b, 0);
+    }
+  }
+
+  const scale = sumW > availWpx ? availWpx / sumW : 1;
+  return { widths, scale };
+}
+
+function estimateRowHeight(row, widths, enabled) {
+  let h = 60;
+  enabled.forEach(col => {
+    if (!col.cap) return;
+    const val = row[col.key] || '';
+    if (!val) return;
+    const fs = col.font;
+    const avail = Math.max(20, widths[col.key] - 14);
+    const lines = countLines(val, avail, colFont(col));
+    h = Math.max(h, lines * fs * 1.3 + 12);
+  });
+  return h;
+}
+
+function paginateRows(rows, widths, enabled, scale) {
+  const sep = state.separator ? 15 : 0;
+  const availH = (PAGE_H_MM - TOP_MM - BOTTOM_RESERVE_MM) * MM;
+  const limitNat = availH / scale - PAGE_SAFETY_PX;
+  const pages = [];
+  let cur = [];
+  let curH = THEAD_H_PX;
+
+  rows.forEach(row => {
+    const h = estimateRowHeight(row, widths, enabled) + sep;
+    if (cur.length && curH + h > limitNat) {
+      pages.push(cur);
+      cur = [];
+      curH = THEAD_H_PX;
+    }
+    cur.push(row);
+    curH += h;
+  });
+  if (cur.length || pages.length === 0) pages.push(cur);
+  return pages;
+}
+
+function renderTable(rows, widths, scale) {
+  const enabled = COLUMNS_CONFIG.filter(c => state.enabledColumns.includes(c.key));
+  const sumW = Object.values(widths).reduce((a, b) => a + b, 0);
+  const sep = state.separator ? 15 : 0;
+
+  let natH = THEAD_H_PX;
+  rows.forEach(row => { natH += estimateRowHeight(row, widths, enabled) + sep; });
+  const scaledH = Math.ceil(natH * scale) + 2;
+
+  let html = `<div class="table-scale-wrap" style="height:${scaledH}px">`;
+  html += `<table class="print-table" style="width:${sumW}px; transform:scale(${scale});">`;
+  html += '<thead><tr>';
+  enabled.forEach(col => {
+    const align = col.align ? `text-align:${col.align}` : '';
+    html += `<th style="width:${widths[col.key]}px; font-size:${Math.max(10, col.font - 3)}px; ${align}">${col.label}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(row => {
+    html += '<tr class="data-row">';
+    enabled.forEach(col => {
+      const val = row[col.key] || '';
+      const bold = col.bold ? 'font-weight:bold;' : '';
+      const align = col.align ? `text-align:${col.align};` : '';
+      html += `<td class="col-${col.key}" style="font-size:${col.font}px; ${bold}${align}">${val}</td>`;
+    });
+    html += '</tr>';
+    if (state.separator) {
+      html += `<tr class="separator-row"><td colspan="${enabled.length}"></td></tr>`;
+    }
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderPage(rows, widths, scale, pageNum, totalPages, zoneTitle, row, level, today, isNewGroup) {
+  const newGroupClass = isNewGroup ? 'new-group' : '';
+  return `
+    <div class="page-preview ${newGroupClass}">
+      <div class="page-header-left">Счётный лист инвентаризации | сформирован ${today}</div>
+      <div class="page-header-right">${zoneTitle} • Ряд ${row} • Ярус ${level} | Страница ${pageNum} из ${totalPages}</div>
+      <div class="page-content">
+        <div class="page-table-wrapper">${renderTable(rows, widths, scale)}</div>
+      </div>
+      <div class="page-signatures">
+        <div class="sig"><span class="sig-line"></span><span>подпись / расшифровка</span></div>
+        <div class="sig"><span class="sig-line"></span><span>подпись / расшифровка</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function generateSheets() {
+  onRangeChange();
+  const zone = state.zone;
+  const [rowFrom, rowTo] = state.ranges[zone];
+  const allLevels = zone === '12' ? ['A','B','C','D','E','F'] : ['A','B','C','D','E','F','G','H','K'];
+
+  const allFlatRows = [];
+  const pageGroups = [];
+
+  for (let r = rowFrom; r <= rowTo; r++) {
+    for (const level of allLevels) {
+      const rows = gatherRowsForCell(zone, r, level);
+      if (rows.length === 0 && state.mode === 'with-goods') continue;
+      allFlatRows.push(...rows);
+      pageGroups.push({ row: r, level, rows });
+    }
+  }
+
+  if (allFlatRows.length === 0 && state.mode === 'with-goods') {
+    alert('Нет данных для формирования листов в указанном диапазоне');
+    return;
+  }
+
+  const { widths, scale } = calculateColumnWidths(allFlatRows);
+  const enabled = COLUMNS_CONFIG.filter(c => state.enabledColumns.includes(c.key));
+
+  const pages = [];
+  const today = new Date().toLocaleDateString('ru-RU');
+  const zoneTitle = ZONE_TITLES[zone];
+
+  pageGroups.forEach(group => {
+    const levelPages = paginateRows(group.rows, widths, enabled, scale);
+    levelPages.forEach((pageRows, pageIdx) => {
+      pages.push({
+        rows: pageRows,
+        row: group.row,
+        level: group.level,
+        isNewGroup: pageIdx === 0
+      });
+    });
+  });
+
+  if (pages.length === 0) {
+    pages.push({ rows: [], row: '-', level: '-', isNewGroup: true });
+  }
+
+  const totalPages = pages.length;
+  const container = $('pagesContainer');
+  container.innerHTML = pages.map((p, i) =>
+    renderPage(p.rows, widths, scale, i + 1, totalPages, zoneTitle, p.row, p.level, today, p.isNewGroup)
+  ).join('');
+
+  $('dashboardView').style.display = 'none';
+  $('printView').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function backToSettings() {
+  $('printView').style.display = 'none';
+  $('dashboardView').style.display = 'flex';
+  window.scrollTo(0, 0);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  fetch('ostatok.xlsx')
+    .then(res => {
+      if (!res.ok) throw new Error('Файл не найден');
+      const lastMod = res.headers.get('Last-Modified');
+      const dateStr = lastMod ? new Date(lastMod).toLocaleString('ru-RU') : new Date().toLocaleDateString('ru-RU');
+      return res.arrayBuffer().then(ab => ({ ab, dateStr }));
+    })
+    .then(({ ab, dateStr }) => {
+      const wb = XLSX.read(ab, { type: 'array' });
+      processWB(wb, dateStr);
+    })
+    .catch(err => {
+      console.log('Ошибка:', err);
+      $('statusTitle').textContent = 'Ошибка загрузки';
+      $('statusTitle').style.color = '#ffcccc';
+      $('btnGenerate').disabled = true;
+    });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Поставка</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow-y:scroll}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:4px}
+::-webkit-scrollbar-thumb{background:rgba(61,90,158,.35);border-radius:4px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a}
+.container{max-width:900px;margin:0 auto;position:relative}
+
+.back-btn{position:fixed;top:20px;left:20px;width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:7px 9px 20px rgba(30,30,60,.16);transition:all .25s;z-index:1000;text-decoration:none;border:none;cursor:pointer}
+.back-btn:hover{background:rgba(61,90,158,.08);transform:translateY(-2px);box-shadow:9px 12px 26px rgba(30,30,60,.22)}
+.back-btn svg{width:24px;height:24px;fill:#3d5a9e}
+
+.header{text-align:center;margin-bottom:28px;padding:24px 20px;background:linear-gradient(135deg,#e85a1e 0%,#ff6f32 50%,#ff8855 100%);border-radius:16px;box-shadow:14px 18px 44px rgba(200,70,20,.35);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.header-icon-box{
+  width:64px;
+  height:64px;
+  background:rgba(255,255,255,.2);
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:12px;
+  backdrop-filter:blur(4px);
+  box-shadow:0 8px 16px rgba(0,0,0,.1);
+  animation:floatIcon 3s ease-in-out infinite;
+}
+.header-icon-box svg{width:36px;height:36px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes floatIcon{
+  0%, 100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-6px) scale(1.03)}
+}
+.header h1{font-size:22px;color:#fff;font-weight:700}
+.header .subtitle{font-size:13px;color:rgba(255,255,255,.8);margin-top:6px}
+
+.card{background:#f5f5fa;border-radius:16px;padding:28px;margin-bottom:20px;border:1px solid rgba(0,0,0,.06);box-shadow:14px 18px 44px rgba(30,30,60,.2)}
+.card h2{font-size:15px;margin-bottom:18px;color:#4a4a65;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px;font-weight:600;text-transform:uppercase;text-align:center}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.warehouse-col{display:flex;flex-direction:column;gap:10px}
+
+.input-row{display:flex;gap:8px;align-items:center}
+.form-control{height:42px;padding:0 14px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;font-size:14px;color:#1a1a2e;outline:none;transition:all .2s;width:100%}
+.form-control:focus{border-color:#e85a1e;box-shadow:0 0 0 3px rgba(232,90,30,.15)}
+.form-control:disabled{background:#e0e1e9;color:#7a7b90;border-color:rgba(0,0,0,.08);cursor:not-allowed}
+
+.btn-check{
+  width:36px;
+  height:36px;
+  border-radius:8px;
+  border:none;
+  background:#2c6e49;
+  color:#fff;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 8px rgba(44,110,73,.25);
+  transition:all .2s ease;
+  flex-shrink:0;
+  opacity:0;
+  visibility:hidden;
+  transform:scale(0.85);
+}
+.btn-check.visible{
+  opacity:1;
+  visibility:visible;
+  transform:scale(1);
+}
+.btn-check:hover{background:#358a5a;box-shadow:0 4px 12px rgba(44,110,73,.35)}
+.btn-check:active{transform:scale(0.92)}
+.btn-check svg{width:18px;height:18px;fill:#fff}
+
+.actions-bar{display:flex;gap:10px;margin-top:20px;justify-content:space-between;align-items:center}
+
+.btn-clear{
+  height:42px;
+  padding:0 20px;
+  border-radius:10px;
+  border:1px solid rgba(217,83,79,.3);
+  background:rgba(217,83,79,.08);
+  color:#d9534f;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  transition:all .2s;
+}
+.btn-clear:hover{
+  background:#d9534f;
+  color:#fff;
+  box-shadow:4px 6px 12px rgba(217,83,79,.25);
+}
+
+.modal-overlay{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.45);
+  backdrop-filter:blur(4px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+  opacity:0;
+  pointer-events:none;
+  transition:all .25s ease;
+}
+.modal-overlay.active{
+  opacity:1;
+  pointer-events:auto;
+}
+.modal-card{
+  background:#fff;
+  border-radius:16px;
+  padding:24px;
+  width:100%;
+  max-width:360px;
+  box-shadow:0 20px 40px rgba(0,0,0,.25);
+  transform:scale(.9);
+  transition:all .25s ease;
+}
+.modal-overlay.active .modal-card{
+  transform:scale(1);
+}
+.modal-card h3{font-size:16px;margin-bottom:12px;color:#2a2a3a;text-align:center}
+.modal-buttons{display:flex;gap:10px;margin-top:16px}
+.btn-modal{flex:1;height:40px;border-radius:8px;border:none;font-weight:600;font-size:13px;cursor:pointer;transition:all .2s}
+.btn-modal-cancel{background:#e0e1e9;color:#4a4a65}
+.btn-modal-cancel:hover{background:#d0d1d9}
+.btn-modal-confirm{background:#d9534f;color:#fff}
+.btn-modal-confirm:hover{background:#c9302c}
+
+#statusMsg{margin-top:12px;font-size:13px;text-align:center;font-weight:600;min-height:20px}
+.status-error{color:#d9534f}
+.status-success{color:#2c6e49}
+.status-info{color:#3d5a9e}
+</style>
+</head>
+<body>
+
+<a href="http://okkam.space" class="back-btn" title="Назад">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon-box">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+    </div>
+    <h1>Поставка</h1>
+    <div class="subtitle">список товаров для заказа в следующей поставке</div>
+  </div>
+
+  <div class="card">
+    <div class="grid-2">
+      <div>
+        <h2>12 Склад</h2>
+        <div id="col12" class="warehouse-col"></div>
+      </div>
+      <div>
+        <h2>11 Склад</h2>
+        <div id="col11" class="warehouse-col"></div>
+      </div>
+    </div>
+
+    <div class="actions-bar">
+      <div id="statusMsg"></div>
+      <button class="btn-clear" id="btnClear" title="Очистить все поля">
+        🗑 Очистить
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="passwordModal">
+  <div class="modal-card">
+    <h3>Подтверждение действия</h3>
+    <div class="form-group" style="display:flex;flex-direction:column;gap:6px">
+      <label style="font-size:12px;color:#4a4a65;" for="pwdInput">Введите пароль для очистки:</label>
+      <input type="password" id="pwdInput" class="form-control" placeholder="Пароль">
+      <div id="pwdError" style="color:#d9534f;font-size:12px;display:none;margin-top:4px;">Неверный пароль!</div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-modal btn-modal-cancel" id="btnPwdCancel">Отмена</button>
+      <button class="btn-modal btn-modal-confirm" id="btnPwdConfirm">Очистить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const col12 = document.getElementById('col12');
+  const col11 = document.getElementById('col11');
+  const btnClear = document.getElementById('btnClear');
+  const statusMsg = document.getElementById('statusMsg');
+
+  const passwordModal = document.getElementById('passwordModal');
+  const pwdInput = document.getElementById('pwdInput');
+  const pwdError = document.getElementById('pwdError');
+  const btnPwdCancel = document.getElementById('btnPwdCancel');
+  const btnPwdConfirm = document.getElementById('btnPwdConfirm');
+
+  const SAVE_URL = 'save.php';
+  const FILE_URL = 'zakaz.xlsx';
+
+  function createInputRow(container, initialValue = '', isSaved = false) {
+    const row = document.createElement('div');
+    row.className = 'input-row';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control item-input';
+    input.placeholder = 'Позиция для заказа';
+    input.value = initialValue;
+
+    const btnCheck = document.createElement('button');
+    btnCheck.className = 'btn-check';
+    btnCheck.title = 'Сохранить';
+    btnCheck.innerHTML = `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+
+    if (isSaved) {
+      input.disabled = true;
+      btnCheck.style.display = 'none';
+    } else {
+      input.addEventListener('input', function() {
+        const val = input.value.trim();
+        if (val !== '') {
+          btnCheck.classList.add('visible');
+        } else {
+          btnCheck.classList.remove('visible');
+        }
+
+        const inputs = container.querySelectorAll('.item-input');
+        const lastInput = inputs[inputs.length - 1];
+        if (input === lastInput && val !== '') {
+          createInputRow(container, '', false);
+        }
+      });
+
+      btnCheck.addEventListener('click', async function() {
+        if (input.value.trim() === '') return;
+        btnCheck.classList.remove('visible');
+        await saveDataToServer();
+      });
+    }
+
+    row.appendChild(input);
+    row.appendChild(btnCheck);
+    container.appendChild(row);
+    return row;
+  }
+
+  async function saveDataToServer() {
+    statusMsg.className = 'status-info';
+    statusMsg.textContent = 'Синхронизация и сохранение...';
+
+    const localUnsaved12 = Array.from(col12.querySelectorAll('.item-input:not(:disabled)'))
+                                .map(i => i.value.trim())
+                                .filter(val => val !== '');
+
+    const localUnsaved11 = Array.from(col11.querySelectorAll('.item-input:not(:disabled)'))
+                                .map(i => i.value.trim())
+                                .filter(val => val !== '');
+
+    if (localUnsaved12.length === 0 && localUnsaved11.length === 0) {
+      statusMsg.textContent = '';
+      return;
+    }
+
+    try {
+      let serverCol12 = [];
+      let serverCol11 = [];
+
+      try {
+        const response = await fetch(FILE_URL + '?t=' + Date.now(), { cache: 'no-cache' });
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(arrayBuffer);
+          const worksheet = workbook.worksheets[0];
+          if (worksheet) {
+            const rowCount = worksheet.rowCount;
+            for (let r = 2; r <= rowCount; r++) {
+              const valA = worksheet.getCell(`A${r}`).value;
+              const valB = worksheet.getCell(`B${r}`).value;
+              const textA = valA !== null && valA !== undefined ? String(valA).trim() : '';
+              const textB = valB !== null && valB !== undefined ? String(valB).trim() : '';
+              if (textA !== '') serverCol12.push(textA);
+              if (textB !== '') serverCol11.push(textB);
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Файл на сервере не найден, создается новый.');
+      }
+
+      const finalCol12 = [...serverCol12, ...localUnsaved12];
+      const finalCol11 = [...serverCol11, ...localUnsaved11];
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Заказ');
+      worksheet.getCell('A1').value = '12 склад';
+      worksheet.getCell('B1').value = '11 склад';
+
+      const maxRows = Math.max(finalCol12.length, finalCol11.length);
+      for (let i = 0; i < maxRows; i++) {
+        const rowIndex = 2 + i;
+        worksheet.getCell(`A${rowIndex}`).value = finalCol12[i] || '';
+        worksheet.getCell(`B${rowIndex}`).value = finalCol11[i] || '';
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      const saveResponse = await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        body: buffer
+      });
+
+      if (saveResponse.ok) {
+        statusMsg.className = 'status-success';
+        statusMsg.textContent = 'Данные успешно сохранены!';
+        await loadDataFromServer();
+      } else {
+        throw new Error(`Ошибка сервера (${saveResponse.status})`);
+      }
+    } catch (err) {
+      statusMsg.className = 'status-error';
+      statusMsg.textContent = 'Ошибка сохранения: ' + err.message;
+    }
+  }
+
+  async function loadDataFromServer() {
+    statusMsg.className = 'status-info';
+    statusMsg.textContent = 'Загрузка актуальных данных...';
+
+    col12.innerHTML = '';
+    col11.innerHTML = '';
+
+    try {
+      const response = await fetch(FILE_URL + '?t=' + Date.now(), { cache: 'no-cache' });
+      if (!response.ok) throw new Error('Файл не создан');
+
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (worksheet) {
+        const rowCount = worksheet.rowCount;
+
+        for (let r = 2; r <= rowCount; r++) {
+          const valA = worksheet.getCell(`A${r}`).value;
+          const valB = worksheet.getCell(`B${r}`).value;
+
+          const textA = valA !== null && valA !== undefined ? String(valA).trim() : '';
+          const textB = valB !== null && valB !== undefined ? String(valB).trim() : '';
+
+          if (textA !== '') {
+            createInputRow(col12, textA, true);
+          }
+          if (textB !== '') {
+            createInputRow(col11, textB, true);
+          }
+        }
+      }
+
+      statusMsg.className = 'status-success';
+      statusMsg.textContent = 'Данные синхронизированы';
+      setTimeout(() => { if (statusMsg.textContent === 'Данные синхронизированы') statusMsg.textContent = ''; }, 2500);
+    } catch (err) {
+      statusMsg.textContent = '';
+    } finally {
+      createInputRow(col12, '', false);
+      createInputRow(col11, '', false);
+    }
+  }
+
+  btnClear.addEventListener('click', function() {
+    pwdInput.value = '';
+    pwdError.style.display = 'none';
+    passwordModal.classList.add('active');
+    pwdInput.focus();
+  });
+
+  btnPwdCancel.addEventListener('click', function() {
+    passwordModal.classList.remove('active');
+  });
+
+  btnPwdConfirm.addEventListener('click', async function() {
+    if (pwdInput.value === 'okkam') {
+      passwordModal.classList.remove('active');
+      statusMsg.className = 'status-info';
+      statusMsg.textContent = 'Очистка файла на сервере...';
+
+      try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Заказ');
+        worksheet.getCell('A1').value = '12 склад';
+        worksheet.getCell('B1').value = '11 склад';
+
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        await fetch(SAVE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+          body: buffer
+        });
+
+        await loadDataFromServer();
+        statusMsg.className = 'status-success';
+        statusMsg.textContent = 'Все данные очищены!';
+      } catch (err) {
+        statusMsg.className = 'status-error';
+        statusMsg.textContent = 'Ошибка очистки: ' + err.message;
+      }
+    } else {
+      pwdError.style.display = 'block';
+      pwdInput.value = '';
+      pwdInput.focus();
+    }
+  });
+
+  pwdInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') btnPwdConfirm.click();
+  });
+
+  loadDataFromServer();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Обработка ТС</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow-y:scroll}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:4px}
+::-webkit-scrollbar-thumb{background:rgba(61,90,158,.35);border-radius:4px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a}
+.container{max-width:1600px;width:96%;margin:0 auto;position:relative}
+
+.back-btn{position:fixed;top:20px;left:20px;width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:7px 9px 20px rgba(30,30,60,.16);transition:all .25s;z-index:1000;text-decoration:none;border:none;cursor:pointer}
+.back-btn:hover{background:rgba(61,90,158,.08);transform:translateY(-2px);box-shadow:9px 12px 26px rgba(30,30,60,.22)}
+.back-btn svg{width:24px;height:24px;fill:#3d5a9e}
+
+.header{text-align:center;margin-bottom:24px;padding:22px 20px;background:linear-gradient(135deg,#e85a1e 0%,#ff6f32 50%,#ff8855 100%);border-radius:16px;box-shadow:14px 18px 44px rgba(200,70,20,.35);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.header-icon-box{width:64px;height:64px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;backdrop-filter:blur(4px);box-shadow:0 8px 16px rgba(0,0,0,.1);animation:floatIcon 3s ease-in-out infinite}
+.header-icon-box svg{width:42px;height:42px}
+@keyframes floatIcon{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.03)}}
+.header h1{font-size:22px;color:#fff;font-weight:700}
+.header .subtitle{font-size:13px;color:rgba(255,255,255,.85);margin-top:4px}
+
+.card{background:#f5f5fa;border-radius:16px;padding:24px;margin-bottom:20px;border:1px solid rgba(0,0,0,.06);box-shadow:14px 18px 44px rgba(30,30,60,.15)}
+.card h2{font-size:15px;margin-bottom:16px;color:#4a4a65;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:8px;font-weight:600;text-transform:uppercase}
+
+.upload-zone{border:2px dashed rgba(61,90,158,.4);padding:35px;text-align:center;border-radius:12px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.6);display:block}
+.upload-zone:hover{background:#fff;border-color:#3d5a9e}
+.upload-zone input{display:none}
+.upload-zone svg{width:40px;height:40px;fill:#3d5a9e;margin-bottom:8px}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.stat-card{background:#fff;border-radius:12px;padding:16px 18px;border:1px solid rgba(0,0,0,.06);box-shadow:0 4px 12px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:6px;min-height:84px}
+.stat-card .stat-label{font-size:12px;color:#7a7b90;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.stat-card .stat-value{font-size:22px;font-weight:700;color:#2a2a3a}
+.stat-card.green .stat-value{color:#2c6e49}
+.stat-card.red .stat-value{color:#d9534f}
+.stat-card.orange .stat-value{color:#e85a1e}
+
+.filters-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-select{height:42px;padding:0 14px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;font-size:14px;color:#1a1a2e;outline:none;transition:all .2s;min-width:220px;cursor:pointer;font-family:inherit}
+.filter-select:focus{border-color:#e85a1e;box-shadow:0 0 0 3px rgba(232,90,30,.15)}
+.filter-toggle{height:42px;padding:0 18px;border-radius:10px;border:1px solid rgba(217,83,79,.4);background:rgba(217,83,79,.08);color:#d9534f;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;user-select:none}
+.filter-toggle:hover{background:rgba(217,83,79,.15)}
+.filter-toggle.active{background:#d9534f;color:#fff;border-color:#d9534f}
+
+.tabs{display:flex;gap:10px;margin-bottom:16px}
+.tab-btn{flex:1;height:44px;border-radius:10px;border:1px solid rgba(0,0,0,.1);background:#fff;color:#4a4a65;font-weight:600;cursor:pointer;transition:all .2s;font-size:14px}
+.tab-btn.active{background:#e85a1e;color:#fff;border-color:#e85a1e;box-shadow:4px 6px 16px rgba(232,90,30,.25)}
+
+.data-table-wrap{background:#fff;border-radius:12px;overflow:hidden;border:1px solid rgba(0,0,0,.06);box-shadow:0 4px 12px rgba(0,0,0,.04)}
+.data-table{border-collapse:collapse;width:100%;font-size:13px}
+.data-table th{background:#f5f5fa;padding:12px 14px;text-align:left;border-bottom:2px solid rgba(0,0,0,.08);color:#4a4a65;font-weight:600;white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+.data-table td{padding:12px 14px;border-bottom:1px solid rgba(0,0,0,.05);color:#2a2a3a;vertical-align:middle}
+.data-table tbody tr{transition:background .15s}
+.data-table tbody tr:hover{background:rgba(61,90,158,.04)}
+.data-table tbody tr:last-child td{border-bottom:none}
+
+.time-cell{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.time-badge{display:inline-flex;align-items:center;padding:6px 12px;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap}
+.time-badge.green{background:rgba(44,110,73,.12);color:#2c6e49}
+.time-badge.red{background:rgba(217,83,79,.12);color:#d9534f}
+.time-badge.early{background:rgba(61,90,158,.1);color:#3d5a9e}
+
+.comment-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;background:rgba(142,68,173,.1);border:1px solid rgba(142,68,173,.3);color:#8e44ad;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.comment-btn:hover{background:rgba(142,68,173,.2);border-color:#8e44ad}
+.comment-btn svg{width:13px;height:13px;fill:#8e44ad}
+
+.sys-diff{font-size:11px;color:#7a7b90;margin-top:4px;white-space:nowrap}
+.sys-diff b{color:#4a4a65;font-weight:600}
+
+.empty-state{text-align:center;padding:50px;color:#7a7b90;font-size:14px;background:#fff;border-radius:12px;border:1px dashed rgba(0,0,0,.1)}
+
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:2000;animation:fadeIn .2s}
+.modal-card{background:#fff;padding:24px 28px;border-radius:16px;max-width:520px;width:90%;text-align:center;box-shadow:0 12px 32px rgba(0,0,0,.2);border:1px solid rgba(0,0,0,.08)}
+.modal-title{font-size:17px;font-weight:700;color:#2a2a3a;margin-bottom:12px}
+.modal-text{font-size:14px;color:#4a4a65;margin-bottom:22px;line-height:1.55;text-align:left;white-space:pre-wrap;word-wrap:break-word}
+.modal-btn{height:40px;padding:0 28px;border-radius:10px;border:none;background:#e85a1e;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 4px 12px rgba(232,90,30,.3);margin:0 4px}
+.modal-btn:hover{background:#ff6f32}
+.modal-btn.cancel{background:#888;box-shadow:0 4px 12px rgba(100,100,100,.3)}
+.modal-btn.cancel:hover{background:#a0a0a0}
+
+@keyframes fadeIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+
+#mainWorkspace{display:none}
+
+@media (max-width:768px){
+  .stats-row{grid-template-columns:1fr}
+  .filters-row{flex-direction:column;align-items:stretch}
+  .filter-select{min-width:100%;width:100%}
+  .tabs{flex-direction:column}
+  .tab-btn{flex:none}
+}
+</style>
+</head>
+<body>
+
+<a href="https://okkam.space/" class="back-btn" title="Назад">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12,6 12,12 16,14"/>
+      </svg>
+    </div>
+    <h1>Обработка ТС</h1>
+    <div class="subtitle">просчёт времени обработки ТС</div>
+  </div>
+
+  <div class="card" id="uploadCard">
+    <h2>Загрузка файла</h2>
+    <label class="upload-zone" id="dropZone">
+      <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <br>
+      <strong>Нажмите для выбора XLSX или XLS файла</strong> или перетащите его сюда
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </label>
+    <div id="statusMsg" style="text-align:center;margin-top:12px;font-weight:600;font-size:14px;color:#d9534f"></div>
+  </div>
+
+  <div id="mainWorkspace">
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card orange">
+        <div class="stat-label">Обработанных ТС</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Просроченных ТС</div>
+        <div class="stat-value" id="statLate">0</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Среднее время обработки</div>
+        <div class="stat-value" id="statAvg">—</div>
+      </div>
+    </div>
+
+    <div class="filters-row">
+      <select class="filter-select" id="filterKontragent">
+        <option value="">Все контрагенты</option>
+      </select>
+      <button class="filter-toggle" id="filterLate">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <span>Только просроченные</span>
+      </button>
+    </div>
+
+    <div class="tabs" id="tabsContainer"></div>
+
+    <div id="tableContainer"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-title" id="modalTitle">Уведомление</div>
+    <div class="modal-text" id="modalText"></div>
+    <button class="modal-btn" onclick="closeModal()">Понятно</button>
+  </div>
+</div>
+
+<script>
+let globalRows = [];
+let currentTab = '';
+let filterKontragent = '';
+let filterLateOnly = false;
+
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const statusMsg = document.getElementById('statusMsg');
+const uploadCard = document.getElementById('uploadCard');
+const mainWorkspace = document.getElementById('mainWorkspace');
+const tabsContainer = document.getElementById('tabsContainer');
+const tableContainer = document.getElementById('tableContainer');
+const filterKontragentEl = document.getElementById('filterKontragent');
+const filterLateEl = document.getElementById('filterLate');
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+function showAlert(text, title = 'Уведомление') {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+function parseRuDate(str) {
+  if (!str || typeof str !== 'string') return null;
+  const s = str.trim();
+  let m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6]));
+    if (!isNaN(d.getTime())) return d;
+  }
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), 0);
+    if (!isNaN(d.getTime())) return d;
+  }
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 0, 0, 0);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function toJsDate(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (val instanceof Date) {
+    if (!isNaN(val.getTime())) return val;
+    return null;
+  }
+  if (typeof val === 'object') {
+    if (val.result !== undefined) {
+      if (val.result instanceof Date) return val.result;
+      if (typeof val.result === 'number') {
+        const utcDays = val.result - 25569;
+        return new Date(utcDays * 86400 * 1000);
+      }
+      if (typeof val.result === 'string') {
+        const parsed = parseRuDate(val.result);
+        if (parsed) return parsed;
+        const d = new Date(val.result);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    if (val.text) {
+      const parsed = parseRuDate(val.text);
+      if (parsed) return parsed;
+    }
+    return null;
+  }
+  if (typeof val === 'number') {
+    const utcDays = val - 25569;
+    return new Date(utcDays * 86400 * 1000);
+  }
+  if (typeof val === 'string') {
+    const parsed = parseRuDate(val);
+    if (parsed) return parsed;
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function formatDate(d) {
+  if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '—';
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatDuration(ms) {
+  const abs = Math.abs(ms);
+  const totalMin = Math.round(abs / 60000);
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  if (hours > 0) return `${hours}ч ${mins}м`;
+  return `${mins}м`;
+}
+
+function formatDurationFull(ms) {
+  const abs = Math.abs(ms);
+  const totalSec = Math.floor(abs / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  if (hours > 0) return `${hours}ч ${mins}м ${secs}с`;
+  if (mins > 0) return `${mins}м ${secs}с`;
+  return `${secs}с`;
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function getCellText(cell) {
+  if (!cell) return '';
+  if (cell.value === null || cell.value === undefined) return '';
+  if (cell.value instanceof Date) return formatDate(cell.value);
+  if (typeof cell.value === 'object') {
+    if (cell.value.result !== undefined) {
+      if (cell.value.result instanceof Date) return formatDate(cell.value.result);
+      return String(cell.value.result ?? '');
+    }
+    if (cell.value.text) return cell.value.text;
+    if (cell.value.richText) return cell.value.richText.map(p => p.text).join('');
+  }
+  if (cell.text) return cell.text;
+  return String(cell.value);
+}
+
+function getCellValue(cell) {
+  if (!cell) return null;
+  if (cell.value === null || cell.value === undefined) return null;
+  if (typeof cell.value === 'object') {
+    if (cell.value.result !== undefined) return cell.value.result;
+  }
+  return cell.value;
+}
+
+async function parseWithExcelJS(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) throw new Error('Файл пуст');
+
+  const rows = [];
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    const cells = {};
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      cells[colNumber] = {
+        value: cell.value,
+        text: cell.text || ''
+      };
+    });
+    rows.push({
+      rowNumber,
+      getCell: (n) => cells[n] || { value: null, text: '' }
+    });
+  });
+  return rows;
+}
+
+async function parseWithSheetJS(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+  
+  if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+    throw new Error('Файл пуст');
+  }
+  
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  
+  if (!worksheet) {
+    throw new Error('Не удалось прочитать лист');
+  }
+  
+  const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null, raw: true });
+  const textRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false, dateNF: 'yyyy-mm-dd hh:mm:ss' });
+
+  const rows = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const rawRow = rawRows[i];
+    const textRow = (textRows && textRows[i]) ? textRows[i] : [];
+    
+    if (!rawRow || !Array.isArray(rawRow) || rawRow.every(c => c === null || c === undefined || c === '')) continue;
+    
+    const cells = {};
+    const maxLen = Math.max(rawRow.length, textRow.length);
+    
+    for (let j = 0; j < maxLen; j++) {
+      const rawVal = (j < rawRow.length) ? rawRow[j] : null;
+      const textVal = (j < textRow.length && textRow[j] !== undefined && textRow[j] !== null) ? String(textRow[j]) : '';
+      cells[j + 1] = {
+        value: rawVal,
+        text: textVal
+      };
+    }
+    
+    rows.push({
+      rowNumber: i + 1,
+      getCell: (n) => cells[n] || { value: null, text: '' }
+    });
+  }
+  return rows;
+}
+
+async function parseFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'xlsx') return await parseWithExcelJS(file);
+  if (ext === 'xls') return await parseWithSheetJS(file);
+  throw new Error('Неподдерживаемый формат файла. Используйте .xlsx или .xls');
+}
+
+fileInput.addEventListener('change', handleFile);
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background = '#fff'; });
+dropZone.addEventListener('dragleave', e => { dropZone.style.background = ''; });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.background = '';
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    handleFile();
+  }
+});
+
+async function handleFile() {
+  if (!fileInput.files.length) return;
+  statusMsg.textContent = 'Обработка файла...';
+  statusMsg.style.color = '#3d5a9e';
+
+  const file = fileInput.files[0];
+
+  try {
+    const rows = await parseFile(file);
+    globalRows = [];
+
+    rows.forEach(row => {
+      if (row.rowNumber === 1) return;
+
+      const aVal = getCellText(row.getCell(1)).trim();
+      if (aVal !== 'Завершено') return;
+
+      const bVal = getCellText(row.getCell(2)).trim();
+      let warehouse = null;
+      if (bVal.includes('Склад 11')) warehouse = 'Склад 11';
+      else if (bVal.includes('Склад 12')) warehouse = 'Склад 12';
+      else return;
+
+      const cVal = getCellText(row.getCell(3)).trim();
+      const eVal = getCellText(row.getCell(5)).trim();
+      const type = eVal.toLowerCase() === 'да' ? 'Погрузка' : 'Разгрузка';
+      
+      const iCell = row.getCell(9);
+      const jCell = row.getCell(10);
+      const kCell = row.getCell(11);
+      
+      let iVal = getCellValue(iCell);
+      let jVal = getCellValue(jCell);
+      let kVal = getCellValue(kCell);
+      
+      if (iVal === null || iVal === undefined) iVal = iCell.text;
+      if (jVal === null || jVal === undefined) jVal = jCell.text;
+      if (kVal === null || kVal === undefined) kVal = kCell.text;
+      
+      const iDate = toJsDate(iVal);
+      const jDate = toJsDate(jVal);
+      const kDate = toJsDate(kVal);
+      
+      const lVal = getCellText(row.getCell(12)).trim();
+      const mVal = getCellText(row.getCell(13)).trim();
+      const nVal = getCellText(row.getCell(14)).trim();
+
+      globalRows.push({
+        warehouse,
+        kontragent: cVal,
+        type,
+        planTime: iDate,
+        factTime: jDate,
+        departTime: kDate,
+        driver: lVal,
+        comment: mVal,
+        sysDiff: nVal
+      });
+    });
+
+    if (globalRows.length === 0) {
+      statusMsg.textContent = 'Не найдено завершённых строк для складов 11/12!';
+      statusMsg.style.color = '#d9534f';
+      return;
+    }
+
+    uploadCard.style.display = 'none';
+    mainWorkspace.style.display = 'block';
+    statusMsg.textContent = '';
+    buildKontragentFilter();
+    renderTabs();
+  } catch (err) {
+    statusMsg.textContent = 'Ошибка чтения файла: ' + err.message;
+    statusMsg.style.color = '#d9534f';
+  }
+}
+
+function buildKontragentFilter() {
+  const set = new Set();
+  globalRows.forEach(r => { if (r.kontragent) set.add(r.kontragent); });
+  const arr = Array.from(set).sort();
+  filterKontragentEl.innerHTML = '<option value="">Все контрагенты</option>';
+  arr.forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = k;
+    filterKontragentEl.appendChild(opt);
+  });
+}
+
+filterKontragentEl.addEventListener('change', () => {
+  filterKontragent = filterKontragentEl.value;
+  renderTable();
+});
+
+filterLateEl.addEventListener('click', () => {
+  filterLateOnly = !filterLateOnly;
+  filterLateEl.classList.toggle('active', filterLateOnly);
+  renderTable();
+});
+
+function computeRowMetrics(row) {
+  const result = {
+    processingMs: null,
+    isEarly: false,
+    isLate: false,
+    displayTime: '—',
+    earlyText: ''
+  };
+
+  if (!row.departTime || !(row.departTime instanceof Date) || isNaN(row.departTime.getTime())) {
+    return result;
+  }
+
+  let compareDate = null;
+  if (row.factTime instanceof Date && !isNaN(row.factTime.getTime())) compareDate = row.factTime;
+  if (row.planTime instanceof Date && !isNaN(row.planTime.getTime())) {
+    if (compareDate === null || row.planTime > compareDate) compareDate = row.planTime;
+  }
+
+  if (!compareDate) return result;
+
+  let diffMs;
+  if (row.factTime instanceof Date && !isNaN(row.factTime.getTime()) && row.planTime instanceof Date && !isNaN(row.planTime.getTime())) {
+    if (row.factTime > row.planTime) {
+      diffMs = row.departTime.getTime() - row.factTime.getTime();
+    } else {
+      diffMs = row.departTime.getTime() - row.planTime.getTime();
+    }
+  } else if (row.factTime instanceof Date && !isNaN(row.factTime.getTime())) {
+    diffMs = row.departTime.getTime() - row.factTime.getTime();
+  } else if (row.planTime instanceof Date && !isNaN(row.planTime.getTime())) {
+    diffMs = row.departTime.getTime() - row.planTime.getTime();
+  } else {
+    return result;
+  }
+
+  result.processingMs = diffMs;
+
+  if (diffMs < 0) {
+    result.isEarly = true;
+    result.earlyText = 'обработано раньше плана на ' + formatDuration(diffMs);
+  } else {
+    if (diffMs > 3 * 3600 * 1000) result.isLate = true;
+    result.displayTime = formatDuration(diffMs);
+  }
+
+  return result;
+}
+
+function getFilteredRows() {
+  return globalRows.filter(r => {
+    if (r.warehouse !== currentTab) return false;
+    if (filterKontragent && r.kontragent !== filterKontragent) return false;
+    if (filterLateOnly) {
+      const m = computeRowMetrics(r);
+      if (!m.isLate) return false;
+    }
+    return true;
+  });
+}
+
+function renderTabs() {
+  tabsContainer.innerHTML = '';
+  const warehouses = ['Склад 11', 'Склад 12'];
+  warehouses.forEach((w, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
+    btn.textContent = w;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTab = w;
+      renderStats();
+      renderTable();
+    };
+    tabsContainer.appendChild(btn);
+  });
+  currentTab = 'Склад 11';
+  renderStats();
+  renderTable();
+}
+
+function renderStats() {
+  const rows = globalRows.filter(r => r.warehouse === currentTab);
+  const total = rows.length;
+  let late = 0;
+  let sumMs = 0;
+  let countForAvg = 0;
+
+  rows.forEach(r => {
+    const m = computeRowMetrics(r);
+    if (m.isLate) late++;
+
+    const hasDepart = r.departTime instanceof Date && !isNaN(r.departTime.getTime());
+    const hasFact = r.factTime instanceof Date && !isNaN(r.factTime.getTime());
+
+    if (hasDepart && hasFact) {
+      const diff = r.departTime.getTime() - r.factTime.getTime();
+      sumMs += diff;
+      countForAvg++;
+    }
+  });
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statLate').textContent = late;
+
+  if (countForAvg > 0) {
+    const avgMs = sumMs / countForAvg;
+    document.getElementById('statAvg').textContent = formatDurationFull(avgMs);
+  } else {
+    document.getElementById('statAvg').textContent = '—';
+  }
+}
+
+function renderTable() {
+  const rows = getFilteredRows();
+
+  if (rows.length === 0) {
+    tableContainer.innerHTML = `
+      <div class="empty-state">
+        Нет строк для отображения по заданным фильтрам.
+      </div>`;
+    return;
+  }
+
+  let html = `
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Контрагент</th>
+            <th>Погрузка/разгрузка</th>
+            <th>Плановое время прибытия</th>
+            <th>Фактическое время прибытия</th>
+            <th>Время отбытия</th>
+            <th>Водитель</th>
+            <th>Время обработки</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  rows.forEach((r, idx) => {
+    const m = computeRowMetrics(r);
+
+    let timeCell = '';
+    if (m.isEarly) {
+      timeCell = `
+        <div class="time-cell">
+          <span class="time-badge early">⚡ ${escapeHtml(m.earlyText)}</span>
+        </div>`;
+    } else if (m.processingMs !== null) {
+      const cls = m.isLate ? 'red' : 'green';
+      let inner = `<span class="time-badge ${cls}">${escapeHtml(m.displayTime)}</span>`;
+      if (m.isLate && r.comment) {
+        inner += `<button class="comment-btn" onclick="showComment(${idx}, '${escapeHtml(r.comment).replace(/'/g, "\\'")}')">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg>
+          комментарий
+        </button>`;
+      }
+      if (r.sysDiff) {
+        inner += `<div class="sys-diff">системная разница: <b>${escapeHtml(r.sysDiff)}</b></div>`;
+      }
+      timeCell = `<div class="time-cell">${inner}</div>`;
+    } else {
+      timeCell = '—';
+    }
+
+    html += `
+      <tr>
+        <td>${escapeHtml(r.kontragent) || '—'}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${formatDate(r.planTime)}</td>
+        <td>${formatDate(r.factTime)}</td>
+        <td>${formatDate(r.departTime)}</td>
+        <td>${escapeHtml(r.driver) || '—'}</td>
+        <td>${timeCell}</td>
+      </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  tableContainer.innerHTML = html;
+}
+
+window.showComment = function(idx, text) {
+  showAlert(text, 'Комментарий');
+};
+</script>
+</body>
+</html>

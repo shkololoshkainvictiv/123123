@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аналитика складов 11 и 12</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.06); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(61,90,158,.35); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(61,90,158,.55); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e4e5eb; color: #2a2a3a; min-height: 100vh; overflow-x: hidden; user-select: none; -webkit-user-select: none; }
+
+.container { max-width: 1500px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+.back-btn {
+  position: fixed; top: 20px; left: 20px; width: 46px; height: 46px;
+  border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 7px 9px 20px rgba(30,30,60,.16); transition: all .3s cubic-bezier(.2,.8,.2,1); z-index: 1000; text-decoration: none;
+}
+.back-btn:hover { background: rgba(61,90,158,.08); transform: translateY(-3px) scale(1.04); box-shadow: 10px 14px 28px rgba(30,30,60,.22); }
+.back-btn svg { width: 22px; height: 22px; fill: #3d5a9e; }
+
+.header {
+  text-align: center; padding: 28px 20px;
+  background: linear-gradient(135deg, #e85a1e, #ff6f32 50%, #ff8855);
+  border-radius: 16px; box-shadow: 8px 12px 28px rgba(200,70,20,.35);
+  position: relative; overflow: hidden;
+}
+.header::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse at 30% 50%, rgba(255,255,255,.1) 0%, transparent 60%); pointer-events: none; animation: shine 8s linear infinite; }
+@keyframes shine { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.header-icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; background: rgba(255,255,255,.15); backdrop-filter: blur(4px); margin-bottom: 12px; border: 1px solid rgba(255,255,255,.2); color: #fff; transition: transform .4s; }
+.header:hover .header-icon { transform: rotate(8deg) scale(1.08); }
+.header-icon svg { width: 28px; height: 28px; }
+.header h1 { font-size: 26px; color: #fff; font-weight: 800; position: relative; }
+.header .subtitle { font-size: 14px; color: rgba(255,255,255,.92); margin-top: 6px; font-weight: 500; position: relative; }
+
+.header-controls { position: absolute; top: 18px; right: 20px; display: flex; gap: 8px; align-items: center; z-index: 5; }
+.load-indicator { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.18); padding: 7px 14px; border-radius: 30px; font-size: 12px; font-weight: 700; color: #fff; border: 1px solid rgba(255,255,255,.15); transition: all .3s; }
+.load-dot { width: 9px; height: 9px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
+.load-dot.err { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation: none; }
+.load-dot.loading { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
+@keyframes pulse { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.4; transform:scale(0.85)} }
+
+.controls-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; background: #fff; border-radius: 14px; padding: 14px 18px; box-shadow: 0 4px 18px rgba(30,30,60,.05); transition: box-shadow .3s; }
+.controls-bar:hover { box-shadow: 0 6px 22px rgba(30,30,60,.08); }
+.ctrl-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ctrl-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; }
+.seg { display: flex; background: #f1f5f9; border-radius: 10px; padding: 3px; gap: 3px; }
+.seg-btn { padding: 7px 16px; border: none; background: transparent; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer; border-radius: 7px; transition: all .25s cubic-bezier(.2,.8,.2,1); white-space: nowrap; }
+.seg-btn.active { background: #fff; color: #e85a1e; box-shadow: 0 2px 8px rgba(0,0,0,.08); transform: translateY(-1px); }
+.seg-btn:hover:not(.active) { background: rgba(255,255,255,.5); color: #475569; }
+
+.month-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { padding: 6px 12px; font-size: 12px; font-weight: 700; color: #64748b; background: #f1f5f9; border: 1.5px solid transparent; border-radius: 8px; cursor: pointer; transition: all .25s cubic-bezier(.2,.8,.2,1); }
+.chip.active { background: #fff3e0; color: #e85a1e; border-color: #ffb38a; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(232,90,30,.2); }
+.chip:hover:not(.active) { border-color: #ff8855; transform: translateY(-1px); background: #fff; }
+.chip-all { background: #2a2c38; color: #fff; }
+.chip-all.active { background: #e85a1e; color: #fff; border-color: #e85a1e; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.kpi-card { background: #fff; border-radius: 14px; padding: 16px 18px; border: 1px solid rgba(0,0,0,.04); box-shadow: 0 4px 14px rgba(30,30,60,.04); display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; min-height: 108px; transition: opacity .5s cubic-bezier(.2,.8,.2,1), transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .35s; cursor: default; min-width: 0; }
+.kpi-card.anim { opacity: 0; transform: translateY(20px); }
+.kpi-card.anim.visible { opacity: 1; transform: translateY(0); }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, #e85a1e, #ff8855); border-radius: 0 4px 4px 0; transition: width .3s; }
+.kpi-card:hover, .kpi-card.anim.visible:hover { transform: translateY(-4px); box-shadow: 0 10px 26px rgba(30,30,60,.12); }
+.kpi-card:hover::before { width: 6px; }
+.kpi-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; padding-left: 8px; line-height: 1.3; }
+.kpi-value { font-size: 26px; font-weight: 800; color: #0f172a; padding-left: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi-sub { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding-left: 8px; margin-top: auto; flex-wrap: wrap; }
+.kpi-delta { padding: 2px 8px; border-radius: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; transition: transform .2s; }
+.kpi-card:hover .kpi-delta { transform: scale(1.08); }
+.kpi-delta.up { background: rgba(16,185,129,.12); color: #059669; }
+.kpi-delta.down { background: rgba(239,68,68,.12); color: #dc2626; }
+.kpi-delta.flat { background: #f1f5f9; color: #64748b; }
+
+.content-flow { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; min-width: 0; }
+
+.chart-box { background: #fff; border-radius: 16px; padding: 18px 20px; box-shadow: 0 4px 18px rgba(30,30,60,.05); display: flex; flex-direction: column; gap: 12px; transition: opacity .5s cubic-bezier(.2,.8,.2,1), transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .35s; border: 1px solid rgba(0,0,0,.03); min-width: 0; max-width: 100%; }
+.chart-box.anim { opacity: 0; transform: translateY(20px); }
+.chart-box.anim.visible { opacity: 1; transform: translateY(0); }
+.chart-box:hover, .chart-box.anim.visible:hover { box-shadow: 0 8px 26px rgba(30,30,60,.09); transform: translateY(-2px); }
+.chart-box-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chart-box-title { font-size: 15px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chart-icon { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #fff3e0, #ffddc1); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; transition: transform .3s; }
+.chart-box:hover .chart-icon { transform: rotate(-8deg) scale(1.1); }
+.chart-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 100%; }
+.view-toggle { display: flex; background: #f1f5f9; border-radius: 8px; padding: 2px; gap: 2px; flex-shrink: 0; }
+.view-btn { padding: 5px 10px; border: none; background: transparent; font-size: 11px; font-weight: 800; color: #94a3b8; cursor: pointer; border-radius: 6px; transition: all .2s; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+.view-btn.active { background: #fff; color: #e85a1e; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.view-btn:hover:not(.active) { color: #475569; }
+.compare-btn.active { background: #e85a1e; color: #fff; }
+.trend-btn.active { background: #3d5a9e; color: #fff; }
+.compare-hint-badge { font-size: 10px; color: #e85a1e; font-weight: 700; background: #fff3e0; padding: 3px 8px; border-radius: 6px; animation: hintPulse 1.5s infinite; }
+@keyframes hintPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.chart-wrap { position: relative; min-height: 260px; height: 280px; overflow: hidden; max-width: 100%; }
+
+.charts-row { display: grid; gap: 16px; }
+.charts-row > * { min-width: 0; }
+.charts-row-2 { grid-template-columns: 1fr 1fr; }
+.charts-row-3 { grid-template-columns: repeat(3, 1fr); }
+
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; transition: all .3s; max-height: 520px; overflow-y: auto; max-width: 100%; }
+.table-wrap:hover { box-shadow: 0 4px 14px rgba(30,30,60,.06); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f1f5f9; color: #475569; padding: 10px 12px; font-size: 11px; text-transform: uppercase; font-weight: 800; text-align: left; position: sticky; top: 0; z-index: 2; border-bottom: 2px solid #e2e8f0; }
+th.num { text-align: right; }
+th .delta-toggle { display: inline-block; width: 16px; height: 16px; border-radius: 4px; background: #cbd5e1; color: #fff; font-size: 9px; font-weight: 900; text-align: center; line-height: 16px; margin-left: 4px; cursor: pointer; vertical-align: middle; transition: all .2s; }
+th .delta-toggle.on { background: #e85a1e; box-shadow: 0 1px 4px rgba(232,90,30,.4); }
+th .delta-toggle:hover { transform: scale(1.15); }
+td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; white-space: nowrap; }
+tbody tr { transition: background .2s; }
+tbody tr:hover td { background: #fff8f3; }
+td.num { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+.totals-row td { background: #fff3e0 !important; font-weight: 800; color: #1e293b; }
+
+.delta-badge { display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 800; margin-left: 6px; }
+.delta-badge.up { background: rgba(16,185,129,.12); color: #059669; }
+.delta-badge.down { background: rgba(239,68,68,.12); color: #dc2626; }
+.delta-badge.flat { background: #f1f5f9; color: #64748b; }
+
+.badge-mini { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 800; margin-left: 6px; letter-spacing: 0.3px; }
+.badge-wh11 { background: #dbeafe; color: #1d4ed8; }
+.badge-wh12 { background: #fce7f3; color: #be185d; }
+
+.client-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.empty-state { text-align: center; padding: 40px 20px; color: #94a3b8; font-weight: 600; font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 120px; justify-content: center; }
+.empty-state-icon { font-size: 32px; opacity: 0.5; }
+
+.loader { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px; color: #64748b; font-weight: 600; font-size: 13px; }
+.spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #e85a1e; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.compare-modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,23,42,.6); backdrop-filter: blur(4px);
+  z-index: 2000; display: flex; align-items: center; justify-content: center;
+  visibility: hidden; opacity: 0; transition: opacity .3s ease, visibility .3s; padding: 12px;
+}
+.compare-modal-overlay.active { visibility: visible; opacity: 1; }
+.compare-modal-card {
+  background: #fff; width: 100%; max-width: min(460px, calc(100vw - 24px)); border-radius: 16px; overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+  transform: scale(.92) translateY(20px); opacity: 0; transform-origin: center;
+  transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease;
+  display: flex; flex-direction: column; max-height: calc(100vh - 24px);
+}
+.compare-modal-overlay.active .compare-modal-card { transform: scale(1) translateY(0); opacity: 1; }
+.compare-modal-header { padding: 18px 22px; background: linear-gradient(135deg, #e85a1e, #ff6f32); color: #fff; position: relative; }
+.compare-modal-header h3 { font-size: 17px; font-weight: 800; }
+.compare-modal-close { position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,.2); border: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .2s; }
+.compare-modal-close:hover { background: rgba(0,0,0,.4); }
+.compare-modal-close svg { width: 14px; height: 14px; fill: #fff; }
+.compare-modal-body { padding: 20px 22px; overflow-y: auto; }
+
+.compare-series-title { text-align: center; font-size: 14px; font-weight: 800; color: #1e293b; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; word-break: break-word; }
+.compare-points { display: flex; align-items: stretch; gap: 10px; justify-content: center; margin-bottom: 14px; }
+.compare-point { flex: 1; min-width: 0; background: #f8fafc; border-radius: 12px; padding: 14px 12px; text-align: center; border: 1px solid #e2e8f0; transition: all .2s; }
+.compare-point:hover { border-color: #e85a1e; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232,90,30,.12); }
+.compare-point-label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 8px; line-height: 1.3; word-break: break-word; }
+.compare-point-value { font-size: 22px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
+.compare-vs { display: flex; align-items: center; font-size: 11px; font-weight: 900; color: #94a3b8; flex-shrink: 0; padding: 0 2px; }
+.compare-delta-big { font-size: 20px; font-weight: 900; text-align: center; padding: 14px; border-radius: 12px; margin: 0; }
+.compare-delta-big.up { background: rgba(16,185,129,.1); color: #059669; }
+.compare-delta-big.down { background: rgba(239,68,68,.1); color: #dc2626; }
+
+.compare-cursor-hint {
+  position: fixed;
+  padding: 7px 14px;
+  background: rgba(15,23,42,.92);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 3000;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  transition: opacity .15s;
+  display: none;
+}
+
+.detail-month-chips { display: flex; flex-wrap: wrap; gap: 4px; background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 4px; }
+.detail-month-chips .chip { font-size: 11px; padding: 4px 10px; }
+
+@media (max-width: 900px) {
+  .container { padding: 12px; }
+  .header { padding-top: 70px; }
+  .header-controls { top: 12px; right: 12px; }
+  .charts-row-2, .charts-row-3 { grid-template-columns: 1fr; }
+  .back-btn { top: 12px; left: 12px; width: 42px; height: 42px; }
+  .controls-bar { flex-direction: column; align-items: stretch; }
+  .ctrl-group { width: 100%; }
+  .seg { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .kpi-value { font-size: 22px; }
+}
+@media (max-width: 520px) {
+  .compare-points { flex-direction: column; }
+  .compare-vs { justify-content: center; padding: 2px 0; }
+  .compare-modal-body { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<a href="index.html" class="back-btn" title="Назад">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<div class="container">
+
+  <header class="header">
+    <div class="header-controls">
+      <div class="load-indicator">
+        <div class="load-dot loading" id="loadDot"></div>
+        <span id="loadText">Загрузка данных...</span>
+      </div>
+    </div>
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/>
+      </svg>
+    </div>
+    <h1>Аналитика работы складов</h1>
+    <p class="subtitle">сравнение показателей Складов 11 и 12 по месяцам</p>
+  </header>
+
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <div class="ctrl-label">Склад</div>
+      <div class="seg" id="whSeg">
+        <button class="seg-btn active" data-wh="all">Оба склада</button>
+        <button class="seg-btn" data-wh="11">Склад 11</button>
+        <button class="seg-btn" data-wh="12">Склад 12</button>
+      </div>
+    </div>
+    <div class="ctrl-group" style="flex:1;">
+      <div class="ctrl-label">Период</div>
+      <div class="month-chips" id="monthChips">
+        <div class="chip chip-all active" data-month="all">Все</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="content">
+    <div class="loader"><div class="spinner"></div>Загрузка данных...</div>
+  </div>
+
+</div>
+
+<div class="compare-modal-overlay" id="compareOverlay">
+  <div class="compare-modal-card">
+    <div class="compare-modal-header">
+      <button class="compare-modal-close" onclick="closeCompareModal()">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h3 id="compareTitle">Сравнение показателей</h3>
+    </div>
+    <div class="compare-modal-body" id="compareBody"></div>
+  </div>
+</div>
+
+<div class="compare-cursor-hint" id="compareCursorHint"></div>
+
+<script>
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+window.addEventListener('error', () => {
+  document.querySelectorAll('.anim:not(.visible)').forEach(el => el.classList.add('visible'));
+});
+
+if (window.Chart && Chart.Tooltip && Chart.Tooltip.positioners) {
+  Chart.Tooltip.positioners.side = function(elements, eventPosition) {
+    const chart = this.chart;
+    if (!elements || !elements.length) return { x: eventPosition.x, y: eventPosition.y };
+    let maxX = -Infinity, minX = Infinity, sumY = 0, n = 0;
+    elements.forEach(el => {
+      const e = el.element;
+      if (!e) return;
+      const p = (typeof e.tooltipPosition === 'function') ? e.tooltipPosition() : { x: e.x, y: e.y };
+      if (p == null || p.x == null) return;
+      maxX = Math.max(maxX, p.x);
+      minX = Math.min(minX, p.x);
+      sumY += p.y;
+      n++;
+    });
+    if (!n) return { x: eventPosition.x, y: eventPosition.y };
+    const w = this.width || 180;
+    const h = this.height || 90;
+    const gap = 16;
+    const area = chart.chartArea || { left: 0, right: chart.width, top: 0, bottom: chart.height };
+    let cx = maxX + gap + w / 2;
+    if (cx + w / 2 > area.right + 60) cx = minX - gap - w / 2;
+    cx = Math.max(w / 2 + 4, Math.min(chart.width - w / 2 - 4, cx));
+    let cy = sumY / n;
+    cy = Math.max(h / 2 + 4, Math.min(chart.height - h / 2 - 4, cy));
+    return { x: cx, y: cy };
+  };
+}
+
+const State = {
+  wh: 'all',
+  months: new Set(['all']),
+  allMonths: [],
+  ts: { '11': {}, '12': {} },
+  stroki: { '11': {}, '12': {} },
+  inoe: { '11': {}, '12': {} },
+  charts: {},
+  views: {
+    chTSBar: 'bar', chTSDist: 'bar', chStOrders: 'bar', chStLines: 'bar',
+    chStPacks: 'bar', chStHours: 'bar', chStCells: 'line', chInG2G: 'line',
+    chInWag: 'bar', chInDry: 'line', chInCold: 'line', chClientChart: 'bar'
+  },
+  trends: {},
+  compare: {},
+  strokiDetail: { view: 'table', months: new Set(['all']), deltaCols: {} },
+  clientDetail: { view: 'table', mode: 'all', months: new Set(['all']), deltaCols: {} },
+  firstRender: true,
+  animateCharts: true
+};
+
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(n);
+}
+function fmtInt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(n));
+}
+function decHoursToTime(v) {
+  if (!v || isNaN(v) || v === 0) return '0ч';
+  const totalMin = Math.round(v * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (m === 0) return `${h}ч`;
+  return `${h}ч ${m}м`;
+}
+
+function parseMonthName(s) {
+  if (!s) return null;
+  const m = String(s).trim().match(/^(\d{1,2})\.(\d{4})$/);
+  if (!m) return null;
+  const mo = parseInt(m[1],10);
+  const yr = parseInt(m[2],10);
+  const names = ['','Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  return { key: `${String(mo).padStart(2,'0')}.${yr}`, mo, yr, label: `${names[mo]} ${yr}`, short: `${names[mo].slice(0,3)} ${yr}` };
+}
+function monthSortKey(s) {
+  const p = parseMonthName(s);
+  if (!p) return 0;
+  return p.yr * 100 + p.mo;
+}
+
+function parseNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v;
+  let s = String(v).trim().replace(/\s/g,'').replace(/ /g,'').replace(/,/g,'.');
+  if (s === '' || s === '—' || s === '-') return null;
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function parseTS(rows) {
+  const seen = new Set();
+  const byClient = {};
+  let totalRecv = 0, totalShip = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length < 3) continue;
+    const clientRaw = r[0];
+    if (clientRaw === null || clientRaw === undefined || String(clientRaw).trim() === '') continue;
+    const client = String(clientRaw).trim();
+    const recv = parseNum(r[1]);
+    const ship = parseNum(r[2]);
+    const key = `${client}||${recv}||${ship}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const rcv = recv || 0;
+    const shp = ship || 0;
+    if (!byClient[client]) byClient[client] = { recv: 0, ship: 0 };
+    byClient[client].recv += rcv;
+    byClient[client].ship += shp;
+    totalRecv += rcv;
+    totalShip += shp;
+  }
+  return { byClient, totalRecv, totalShip, total: totalRecv + totalShip };
+}
+
+function parseStroki(rows) {
+  const byClient = { '11': {}, '12': {} };
+  const totals = {
+    '11': { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0, cells:0 },
+    '12': { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0, cells:0 }
+  };
+  for (let i = 2; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length < 14) continue;
+    const whText = String(r[2] || '').trim();
+    let wh = null;
+    if (whText.includes('Склад 11') || whText.includes('11')) wh = '11';
+    else if (whText.includes('Склад 12') || whText.includes('12')) wh = '12';
+    if (!wh) continue;
+    const client = String(r[0] || '').trim();
+    const ordersIn = parseNum(r[3]) || 0;
+    const linesIn = parseNum(r[4]) || 0;
+    const packsIn = parseNum(r[5]) || 0;
+    const ordersOut = parseNum(r[7]) || 0;
+    const linesOut = parseNum(r[8]) || 0;
+    const packsOut = parseNum(r[9]) || 0;
+    const hours = parseNum(r[11]) || 0;
+    const cellsRaw = parseNum(r[13]);
+    const cells = cellsRaw !== null ? Math.round(cellsRaw) : 0;
+    if (!byClient[wh][client]) byClient[wh][client] = { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0, cells:0 };
+    const c = byClient[wh][client];
+    c.ordersIn += ordersIn; c.linesIn += linesIn; c.packsIn += packsIn;
+    c.ordersOut += ordersOut; c.linesOut += linesOut; c.packsOut += packsOut;
+    c.hours += hours; c.cells = Math.max(c.cells, cells);
+    const t = totals[wh];
+    t.ordersIn += ordersIn; t.linesIn += linesIn; t.packsIn += packsIn;
+    t.ordersOut += ordersOut; t.linesOut += linesOut; t.packsOut += packsOut;
+    t.hours += hours; t.cells = Math.max(t.cells, cells);
+  }
+  return { byClient, totals };
+}
+
+function parseInoe(rows) {
+  if (rows.length < 3) return null;
+  const r = rows[2];
+  if (!r) return null;
+  const v = (idx) => parseNum(r[idx]);
+  return {
+    g2g11: v(0), g2g12: v(1),
+    wagons11: v(2), cont11: v(3), cont12: v(4),
+    dry11: v(5), cold11: v(6), dry12: v(7)
+  };
+}
+
+async function loadFile(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('not found');
+    const ab = await res.arrayBuffer();
+    return XLSX.read(ab, { type: 'array' });
+  } catch(e) { return null; }
+}
+
+async function init() {
+  const [wb11, wb12, wbStroki, wbInoe] = await Promise.all([
+    loadFile('11.xlsx'), loadFile('12.xlsx'),
+    loadFile('stroki.xlsx'), loadFile('inoe.xlsx')
+  ]);
+
+  if (wb11) {
+    wb11.SheetNames.forEach(name => {
+      const pm = parseMonthName(name);
+      if (!pm) return;
+      const rows = XLSX.utils.sheet_to_json(wb11.Sheets[name], { header:1, defval:'', raw:true });
+      State.ts['11'][pm.key] = parseTS(rows);
+    });
+  }
+  if (wb12) {
+    wb12.SheetNames.forEach(name => {
+      const pm = parseMonthName(name);
+      if (!pm) return;
+      const rows = XLSX.utils.sheet_to_json(wb12.Sheets[name], { header:1, defval:'', raw:true });
+      State.ts['12'][pm.key] = parseTS(rows);
+    });
+  }
+  if (wbStroki) {
+    wbStroki.SheetNames.forEach(name => {
+      const pm = parseMonthName(name);
+      if (!pm) return;
+      const rows = XLSX.utils.sheet_to_json(wbStroki.Sheets[name], { header:1, defval:'', raw:true });
+      const parsed = parseStroki(rows);
+      State.stroki['11'][pm.key] = { byClient: parsed.byClient['11'], totals: parsed.totals['11'] };
+      State.stroki['12'][pm.key] = { byClient: parsed.byClient['12'], totals: parsed.totals['12'] };
+    });
+  }
+  if (wbInoe) {
+    wbInoe.SheetNames.forEach(name => {
+      const pm = parseMonthName(name);
+      if (!pm) return;
+      const rows = XLSX.utils.sheet_to_json(wbInoe.Sheets[name], { header:1, defval:'', raw:true });
+      const d = parseInoe(rows);
+      if (!d) return;
+      State.inoe['11'][pm.key] = { g2g: d.g2g11, wagons: d.wagons11, cont: d.cont11, dry: d.dry11, cold: d.cold11 };
+      State.inoe['12'][pm.key] = { g2g: d.g2g12, cont: d.cont12, dry: d.dry12 };
+    });
+  }
+
+  const allMonths = new Set();
+  ['11','12'].forEach(w => {
+    Object.keys(State.ts[w]).forEach(m => allMonths.add(m));
+    Object.keys(State.stroki[w]).forEach(m => allMonths.add(m));
+    Object.keys(State.inoe[w]).forEach(m => allMonths.add(m));
+  });
+  State.allMonths = [...allMonths].sort((a,b) => monthSortKey(a) - monthSortKey(b));
+
+  renderMonthChips();
+  const dot = document.getElementById('loadDot');
+  const txt = document.getElementById('loadText');
+  const loaded = [wb11, wb12, wbStroki, wbInoe].filter(x => x).length;
+  if (loaded === 4) { dot.classList.remove('loading'); txt.textContent = 'Все данные загружены'; }
+  else if (loaded > 0) { dot.classList.remove('loading'); dot.classList.add('err'); txt.textContent = `Загружено ${loaded} из 4 файлов`; }
+  else { dot.classList.remove('loading'); dot.classList.add('err'); txt.textContent = 'Не удалось загрузить данные'; }
+
+  renderAll();
+}
+
+function renderMonthChips() {
+  const wrap = document.getElementById('monthChips');
+  let html = `<div class="chip chip-all ${State.months.has('all') ? 'active' : ''}" data-month="all">Все</div>`;
+  State.allMonths.forEach(mk => {
+    const pm = parseMonthName(mk);
+    const active = State.months.has(mk) && !State.months.has('all');
+    html += `<div class="chip ${active ? 'active' : ''}" data-month="${mk}">${pm ? pm.short : mk}</div>`;
+  });
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.chip').forEach(c => { c.onclick = () => toggleMonth(c.dataset.month); });
+}
+function toggleMonth(mk) {
+  if (mk === 'all') {
+    State.months = new Set(['all']);
+  } else {
+    State.months.delete('all');
+    if (State.months.has(mk)) {
+      State.months.delete(mk);
+      if (State.months.size === 0) State.months.add('all');
+    } else {
+      State.months.add(mk);
+    }
+  }
+  renderMonthChips();
+  renderAll();
+}
+document.getElementById('whSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('.seg-btn');
+  if (!b) return;
+  document.querySelectorAll('#whSeg .seg-btn').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  State.wh = b.dataset.wh;
+  renderAll();
+});
+
+function hideCursorHint() {
+  const h = document.getElementById('compareCursorHint');
+  if (h) h.style.display = 'none';
+}
+window.addEventListener('scroll', hideCursorHint, { passive: true });
+document.addEventListener('touchend', () => { setTimeout(hideCursorHint, 500); }, { passive: true });
+
+document.addEventListener('mousemove', (e) => {
+  const hint = document.getElementById('compareCursorHint');
+  if (!hint) return;
+  const anyActive = Object.values(State.compare).some(c => c && c.active);
+  if (anyActive) {
+    hint.style.display = 'block';
+    hint.style.left = (e.clientX + 14) + 'px';
+    hint.style.top = (e.clientY - 28) + 'px';
+    let totalSelected = 0;
+    Object.values(State.compare).forEach(c => { if (c) totalSelected += c.points.length; });
+    hint.textContent = totalSelected === 0 ? 'Выберите первый показатель для сравнения' : 'Выберите второй показатель для сравнения';
+  } else {
+    hint.style.display = 'none';
+  }
+});
+
+function activeMonths() {
+  if (State.months.has('all')) return State.allMonths.slice();
+  return State.allMonths.filter(m => State.months.has(m));
+}
+
+function sumTS(wh, months) {
+  const agg = { recv:0, ship:0, total:0, clients:{} };
+  months.forEach(mk => {
+    const d = State.ts[wh][mk];
+    if (!d) return;
+    agg.recv += d.totalRecv;
+    agg.ship += d.totalShip;
+    agg.total += d.total;
+    Object.entries(d.byClient).forEach(([cl, v]) => {
+      if (!agg.clients[cl]) agg.clients[cl] = { recv:0, ship:0, wh: new Set() };
+      agg.clients[cl].recv += v.recv;
+      agg.clients[cl].ship += v.ship;
+      agg.clients[cl].wh.add(wh);
+    });
+  });
+  return agg;
+}
+function sumStroki(wh, months) {
+  const agg = { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0, cells:0, clients:{} };
+  months.forEach(mk => {
+    const d = State.stroki[wh][mk];
+    if (!d) return;
+    agg.ordersIn += d.totals.ordersIn; agg.linesIn += d.totals.linesIn; agg.packsIn += d.totals.packsIn;
+    agg.ordersOut += d.totals.ordersOut; agg.linesOut += d.totals.linesOut; agg.packsOut += d.totals.packsOut;
+    agg.hours += d.totals.hours; agg.cells = Math.max(agg.cells, d.totals.cells || 0);
+    Object.entries(d.byClient).forEach(([cl, v]) => {
+      if (!agg.clients[cl]) agg.clients[cl] = { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0, cells:0, wh: new Set() };
+      const a = agg.clients[cl];
+      a.ordersIn += v.ordersIn; a.linesIn += v.linesIn; a.packsIn += v.packsIn;
+      a.ordersOut += v.ordersOut; a.linesOut += v.linesOut; a.packsOut += v.packsOut;
+      a.hours += v.hours; a.cells = Math.max(a.cells, v.cells || 0);
+      a.wh.add(wh);
+    });
+  });
+  return agg;
+}
+function collectInoe(months) {
+  const out = { '11': { g2g:[], wagons:[], cont:[], dry:[], cold:[] }, '12': { g2g:[], cont:[], dry:[] } };
+  months.forEach(mk => {
+    const d11 = State.inoe['11'][mk];
+    const d12 = State.inoe['12'][mk];
+    if (d11) {
+      if (d11.g2g !== null) out['11'].g2g.push({ mk, v: d11.g2g });
+      if (d11.wagons !== null) out['11'].wagons.push({ mk, v: d11.wagons });
+      if (d11.cont !== null) out['11'].cont.push({ mk, v: d11.cont });
+      if (d11.dry !== null) out['11'].dry.push({ mk, v: d11.dry });
+      if (d11.cold !== null) out['11'].cold.push({ mk, v: d11.cold });
+    }
+    if (d12) {
+      if (d12.g2g !== null) out['12'].g2g.push({ mk, v: d12.g2g });
+      if (d12.cont !== null) out['12'].cont.push({ mk, v: d12.cont });
+      if (d12.dry !== null) out['12'].dry.push({ mk, v: d12.dry });
+    }
+  });
+  return out;
+}
+function hasAny(arr) { return Array.isArray(arr) && arr.length > 0; }
+
+function lastMonthDelta(months, getValue) {
+  const sorted = months.slice().sort((a,b) => monthSortKey(a) - monthSortKey(b));
+  if (sorted.length < 2) return null;
+  const last = sorted[sorted.length - 1];
+  const prev = sorted[sorted.length - 2];
+  const lastV = getValue(last);
+  const prevV = getValue(prev);
+  if (lastV === null || prevV === null || prevV === 0) return null;
+  return ((lastV - prevV) / Math.abs(prevV)) * 100;
+}
+
+function linearRegression(data) {
+  const pts = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && !isNaN(p.y));
+  if (pts.length < 2) return null;
+  const n = pts.length;
+  let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+  pts.forEach(p => { sx += p.x; sy += p.y; sxy += p.x * p.y; sx2 += p.x * p.x; });
+  const denom = n * sx2 - sx * sx;
+  if (denom === 0) return null;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  return data.map((_, i) => Math.max(0, intercept + slope * i));
+}
+
+function destroyChart(id) {
+  if (State.charts[id]) { try { State.charts[id].destroy(); } catch(e){} delete State.charts[id]; }
+}
+
+function kpiCard(label, value, sub, delta) {
+  let deltaHtml = '';
+  if (delta !== null && delta !== undefined && !isNaN(delta)) {
+    const cls = delta > 0.5 ? 'up' : delta < -0.5 ? 'down' : 'flat';
+    const arrow = delta > 0.5 ? '▲' : delta < -0.5 ? '▼' : '—';
+    deltaHtml = `<span class="kpi-delta ${cls}">${arrow} ${Math.abs(delta).toFixed(1)}%</span>`;
+  }
+  return `<div class="kpi-card">
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}</div>
+    <div class="kpi-sub">${deltaHtml}<span style="color:#94a3b8">${sub}</span></div>
+  </div>`;
+}
+
+function clientBadge(whSet) {
+  const list = [...whSet].sort();
+  if (list.length === 0) return '';
+  if (list.length === 1) return `<span class="badge-mini badge-wh${list[0]}">С${list[0]}</span>`;
+  return `<span class="badge-mini badge-wh11">С11</span><span class="badge-mini badge-wh12">С12</span>`;
+}
+
+function viewToggle(id, options) {
+  return `<div class="view-toggle">${options.map(o => 
+    `<button class="view-btn ${State.views[id] === o.v ? 'active' : ''}" onclick="switchView('${id}','${o.v}')">${o.l}</button>`
+  ).join('')}</div>`;
+}
+
+function chartTools(id, viewOpts, showTrend) {
+  const st = State.compare[id];
+  const active = !!(st && st.active);
+  const vt = (viewOpts && viewOpts.length) ? viewToggle(id, viewOpts) : '';
+  const tr = (showTrend === false) ? '' : `<button class="view-btn trend-btn ${State.trends[id] ? 'active' : ''}" onclick="toggleTrend('${id}')">Тренд</button>`;
+  return `${vt}${tr}
+    <button id="cmpbtn-${id}" class="view-btn compare-btn ${active ? 'active' : ''}" onclick="toggleCompare('${id}')">Сравнить</button>
+    <span id="cmpbadge-${id}" class="compare-hint-badge" style="display:${active ? 'inline-block' : 'none'}">${active ? 'Выберите точки' : ''}</span>`;
+}
+
+function updateCompareBadge(id) {
+  const btn = document.getElementById('cmpbtn-' + id);
+  const badge = document.getElementById('cmpbadge-' + id);
+  const st = State.compare[id];
+  const active = !!(st && st.active);
+  if (btn) btn.classList.toggle('active', active);
+  if (badge) {
+    if (active) {
+      badge.style.display = 'inline-block';
+      badge.textContent = st.points.length === 0 ? 'Выберите точки' : `Точек: ${st.points.length}`;
+    } else {
+      badge.style.display = 'none';
+      badge.textContent = '';
+    }
+  }
+}
+
+window.switchView = function(id, v) {
+  State.views[id] = v;
+  renderAll();
+};
+window.toggleTrend = function(id) {
+  State.trends[id] = !State.trends[id];
+  renderAll();
+};
+window.toggleCompare = function(id) {
+  if (!State.compare[id]) State.compare[id] = { active: false, points: [] };
+  const st = State.compare[id];
+  st.active = !st.active;
+  st.points = [];
+  updateCompareBadge(id);
+  refreshChartVisuals(id, -1, -1);
+};
+
+function refreshChartVisuals(canvasId, hoverDs, hoverPt) {
+  const chart = State.charts[canvasId];
+  if (!chart) return;
+  const base = chart.config.type;
+  if (base === 'doughnut' || base === 'pie') return;
+  const st = State.compare[canvasId];
+  const pts = st ? st.points : [];
+  chart.data.datasets.forEach((d, i) => {
+    if (d.isTrend) return;
+    const isBar = base === 'bar' && d.type !== 'line';
+    const selAt = (j) => pts.some(p => p.dsIdx === i && p.ptIdx === j);
+    if (isBar) {
+      d.borderWidth = d.data.map((_, j) => selAt(j) ? 3 : (i === hoverDs && j === hoverPt ? 2 : 0));
+      d.borderColor = d.data.map((_, j) => selAt(j) ? '#e85a1e' : (i === hoverDs && j === hoverPt ? '#0f172a' : 'transparent'));
+    } else {
+      d.borderWidth = (i === hoverDs) ? 4 : (hoverDs === -1 ? 2 : 1.5);
+      d.pointRadius = d.data.map((_, j) => selAt(j) ? 8 : (i === hoverDs && j === hoverPt ? 6 : 4));
+      d.pointBorderColor = d.data.map((_, j) => selAt(j) ? '#e85a1e' : (i === hoverDs && j === hoverPt ? '#0f172a' : 'transparent'));
+      d.pointBorderWidth = d.data.map((_, j) => selAt(j) ? 3 : (i === hoverDs && j === hoverPt ? 2 : 0));
+    }
+  });
+  chart.update('none');
+}
+
+function initScrollAnimations() {
+  const boxes = document.querySelectorAll('.chart-box, .kpi-card');
+  if (!State.firstRender || !('IntersectionObserver' in window)) return;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.05, rootMargin: '0px 0px -30px 0px' });
+  boxes.forEach((box, i) => {
+    box.classList.add('anim');
+    box.style.transitionDelay = `${(i % 4) * 0.08}s`;
+    observer.observe(box);
+  });
+  State.firstRender = false;
+}
+
+function makeChart(canvasId, labels, datasets, view, options = {}) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const type = view === 'pie' ? 'doughnut' : view;
+  const isDoughnut = type === 'doughnut' || type === 'pie';
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: State.animateCharts ? { duration: 700, easing: 'easeOutCubic' } : false,
+    interaction: { mode: 'nearest', intersect: false },
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11, weight: 'bold' }, boxWidth: 12, padding: 12, usePointStyle: true } },
+      tooltip: Object.assign({
+        backgroundColor: 'rgba(15,23,42,.92)', padding: 10, cornerRadius: 8,
+        titleFont: { size: 12, weight: '800' }, bodyFont: { size: 11 },
+        position: 'side', xAlign: 'center', yAlign: 'center'
+      }, isDoughnut ? {} : { mode: 'index', intersect: false })
+    },
+    scales: isDoughnut ? {} : {
+      x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } },
+      y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,.04)' } }
+    },
+    ...options
+  };
+  if (options.tooltipCb) {
+    chartOptions.plugins.tooltip.callbacks = { label: options.tooltipCb };
+    delete chartOptions.tooltipCb;
+  }
+  if (options.yTickCb) {
+    if (chartOptions.scales && chartOptions.scales.y && chartOptions.scales.y.ticks) {
+      chartOptions.scales.y.ticks.callback = options.yTickCb;
+    }
+    delete chartOptions.yTickCb;
+  }
+
+  if (view === 'line') {
+    datasets = datasets.map(ds => ({ ...ds, fill: false, tension: 0.35, pointRadius: 4 }));
+  } else if (view === 'bar') {
+    datasets = datasets.map(ds => ({ ...ds, borderRadius: 6, borderWidth: 0 }));
+  }
+
+  if (State.trends[canvasId] && !isDoughnut) {
+    const trendDs = datasets.filter(ds => !ds.isTrend).map(ds => {
+      const trend = linearRegression(ds.data);
+      if (!trend) return null;
+      return {
+        label: `Тренд: ${ds.label}`,
+        data: trend,
+        borderColor: '#94a3b8',
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+        type: 'line',
+        isTrend: true
+      };
+    }).filter(Boolean);
+    datasets = [...datasets, ...trendDs];
+  }
+
+  if (!isDoughnut) {
+    chartOptions.onHover = (event, elements, ch) => {
+      const target = event.native ? event.native.target : null;
+      let dsIdx = -1, ptIdx = -1;
+      if (elements.length) { dsIdx = elements[0].datasetIndex; ptIdx = elements[0].index; }
+      const cmpActive = Object.values(State.compare).some(c => c && c.active);
+      if (target) target.style.cursor = (cmpActive && elements.length) ? 'pointer' : 'default';
+      refreshChartVisuals(canvasId, dsIdx, ptIdx);
+    };
+    chartOptions.onClick = (event, elements, ch) => {
+      const st = State.compare[canvasId];
+      if (!st || !st.active) return;
+      if (!elements.length) return;
+      const dsIdx = elements[0].datasetIndex;
+      const ptIdx = elements[0].index;
+      const ds = ch.data.datasets[dsIdx];
+      if (!ds || ds.isTrend) return;
+      const idx = st.points.findIndex(p => p.dsIdx === dsIdx && p.ptIdx === ptIdx);
+      if (idx >= 0) st.points.splice(idx, 1);
+      else st.points.push({ dsIdx, ptIdx, val: ds.data[ptIdx], label: labels[ptIdx], dsLabel: ds.label });
+      if (st.points.length >= 2) {
+        showCompareModal(canvasId, st.points.slice());
+      } else {
+        refreshChartVisuals(canvasId, dsIdx, ptIdx);
+        updateCompareBadge(canvasId);
+      }
+    };
+  }
+
+  const data = isDoughnut
+    ? { labels, datasets: datasets.map(d => ({ ...d, borderWidth: 2, borderColor: '#fff' })) }
+    : { labels, datasets };
+  State.charts[canvasId] = new Chart(ctx, { type, data, options: chartOptions });
+
+  if (!isDoughnut) {
+    ctx.addEventListener('mouseleave', () => {
+      refreshChartVisuals(canvasId, -1, -1);
+    });
+  }
+}
+
+function showCompareModal(chartId, points) {
+  const p1 = points[0];
+  const p2 = points[1];
+  const overlay = document.getElementById('compareOverlay');
+  const title = document.getElementById('compareTitle');
+  const body = document.getElementById('compareBody');
+
+  title.textContent = 'Сравнение показателей';
+  const diff = p2.val - p1.val;
+  const pct = p1.val !== 0 ? ((diff / Math.abs(p1.val)) * 100).toFixed(1) : '—';
+  const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+  const sameDataset = p1.dsLabel === p2.dsLabel;
+
+  const pointHtml = (p) => {
+    const label = sameDataset ? p.label : `${p.dsLabel} • ${p.label}`;
+    return `<div class="compare-point">
+      <div class="compare-point-label">${label}</div>
+      <div class="compare-point-value">${fmt(p.val)}</div>
+    </div>`;
+  };
+
+  body.innerHTML = `
+    ${sameDataset ? `<div class="compare-series-title">${p1.dsLabel}</div>` : ''}
+    <div class="compare-points">
+      ${pointHtml(p1)}
+      <div class="compare-vs">VS</div>
+      ${pointHtml(p2)}
+    </div>
+    <div class="compare-delta-big ${cls}">
+      ${diff > 0 ? '▲' : diff < 0 ? '▼' : '—'} ${fmt(Math.abs(diff))}${pct !== '—' ? ` (${pct}%)` : ''}
+    </div>
+  `;
+  overlay.classList.add('active');
+  const st = State.compare[chartId];
+  if (st) { st.points = []; st.active = false; }
+  updateCompareBadge(chartId);
+  refreshChartVisuals(chartId, -1, -1);
+}
+
+window.closeCompareModal = function() {
+  document.getElementById('compareOverlay').classList.remove('active');
+};
+
+function getDetailMonths(detailState) {
+  if (detailState.months.has('all')) {
+    return activeMonths();
+  }
+  return State.allMonths.filter(m => detailState.months.has(m));
+}
+
+function toggleDetailMonth(detailKey, mk) {
+  const d = State[detailKey];
+  if (mk === 'all') {
+    d.months = new Set(['all']);
+    renderAll();
+    return;
+  }
+  d.months.delete('all');
+  if (d.months.has(mk)) {
+    d.months.delete(mk);
+    if (d.months.size === 0) d.months.add('all');
+  } else {
+    const limit = (detailKey === 'strokiDetail') ? 2 : (d.mode === 'multi' ? 2 : Infinity);
+    if (d.months.size >= limit) {
+      renderAll();
+      return;
+    }
+    d.months.add(mk);
+  }
+  renderAll();
+}
+
+function toggleDeltaCol(detailKey, col) {
+  const d = State[detailKey];
+  if (!d.deltaCols) d.deltaCols = {};
+  d.deltaCols[col] = !(d.deltaCols[col] !== false);
+  renderAll();
+}
+
+function isDeltaColOn(detailKey, col) {
+  const d = State[detailKey];
+  if (!d.deltaCols) return true;
+  return d.deltaCols[col] !== false;
+}
+
+function computeDeltaBetween(whs, targetMonths, getAgg) {
+  if (targetMonths.length < 2) return null;
+  const sorted = targetMonths.slice().sort((a,b) => monthSortKey(a) - monthSortKey(b));
+  const last = sorted[sorted.length - 1];
+  const prev = sorted[sorted.length - 2];
+  const currAgg = getAgg(whs, [last]);
+  const prevAgg = getAgg(whs, [prev]);
+  const deltaMap = {};
+  Object.keys(currAgg).forEach(cl => {
+    const c = currAgg[cl];
+    const p = prevAgg[cl] || {};
+    deltaMap[cl] = {};
+    Object.keys(c).forEach(k => {
+      if (typeof c[k] !== 'number') return;
+      const cv = c[k] || 0;
+      const pv = typeof p[k] === 'number' ? p[k] : 0;
+      if (pv !== 0) deltaMap[cl][k] = ((cv - pv) / Math.abs(pv)) * 100;
+      else deltaMap[cl][k] = null;
+    });
+  });
+  return { deltaMap, last, prev };
+}
+
+function computeDeltaForDetail(detailKey, whs, targetMonths, getAgg) {
+  const d = State[detailKey];
+  if (d.mode === 'all') return null;
+  return computeDeltaBetween(whs, targetMonths, getAgg);
+}
+
+function deltaCell(val, colOn) {
+  if (!colOn) return '';
+  if (val === null || val === undefined) return '';
+  const cls = val > 0.5 ? 'up' : val < -0.5 ? 'down' : 'flat';
+  const arrow = val > 0.5 ? '▲' : val < -0.5 ? '▼' : '—';
+  return `<span class="delta-badge ${cls}">${arrow}${Math.abs(val).toFixed(1)}%</span>`;
+}
+
+function renderMonthChipsForDetail(detailKey, targetMonths) {
+  const d = State[detailKey];
+  const isAll = d.months.has('all');
+  let html = `<div class="detail-month-chips">
+    <div class="chip chip-all ${isAll ? 'active' : ''}" onclick="toggleDetailMonth('${detailKey}','all')">Все</div>`;
+  State.allMonths.forEach(mk => {
+    const pm = parseMonthName(mk);
+    const active = d.months.has(mk) && !isAll;
+    html += `<div class="chip ${active ? 'active' : ''}" onclick="toggleDetailMonth('${detailKey}','${mk}')">${pm ? pm.short : mk}</div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderAll() {
+  const sy = window.scrollY;
+  State.animateCharts = State.firstRender;
+  const months = activeMonths();
+  const wh = State.wh;
+  const whs = wh === 'all' ? ['11','12'] : [wh];
+  const cont = document.getElementById('content');
+
+  let html = '<div class="kpi-grid" id="kpiGrid"></div>';
+  html += '<div class="content-flow">';
+
+  html += `<div class="chart-box">
+    <div class="chart-box-head">
+      <div class="chart-box-title"><div class="chart-icon">🚚</div>Приход и отгрузка ТС</div>
+      <div class="chart-controls">${chartTools('chTSBar', [{v:'bar',l:'Столбцы'},{v:'line',l:'Линия'}])}</div>
+    </div>
+    <div class="chart-wrap"><canvas id="chTSBar"></canvas></div>
+  </div>
+  <div class="charts-row charts-row-2">
+    <div class="chart-box">
+      <div class="chart-box-head">
+        <div class="chart-box-title"><div class="chart-icon">📊</div>Распределение по контрагентам</div>
+        <div class="chart-controls">${chartTools('chTSDist', [{v:'bar',l:'Столбцы'},{v:'pie',l:'Круг'}])}</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chTSDist"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-head">
+        <div class="chart-box-title"><div class="chart-icon">📋</div>Детализация по контрагентам</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        ${viewToggle('clientDetailView', [{v:'table',l:'Таблица'},{v:'chart',l:'График'},{v:'pie',l:'Круг'}])}
+        <div class="view-toggle">
+          <button class="view-btn ${State.clientDetail.mode === 'all' ? 'active' : ''}" onclick="setClientMode('all')">Все</button>
+          <button class="view-btn ${State.clientDetail.mode === 'multi' ? 'active' : ''}" onclick="setClientMode('multi')">Сравнить</button>
+        </div>
+      </div>
+      ${State.clientDetail.mode === 'multi' ? renderMonthChipsForDetail('clientDetail', null) : ''}
+      ${State.clientDetail.view === 'table' ? '<div class="table-wrap"><table id="tsTable"></table></div>' : `<div class="chart-controls">${chartTools('chClientChart', [{v:'bar',l:'Столбцы'},{v:'line',l:'Линия'}])}</div><div class="chart-wrap"><canvas id="chClientChart"></canvas></div>`}
+    </div>
+  </div>`;
+
+  html += `<div class="charts-row charts-row-3">
+    <div class="chart-box">
+      <div class="chart-box-head">
+        <div class="chart-box-title"><div class="chart-icon">📦</div>Заказы</div>
+        <div class="chart-controls">${chartTools('chStOrders', [{v:'bar',l:'Ст'},{v:'line',l:'Л'}])}</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chStOrders"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-head">
+        <div class="chart-box-title"><div class="chart-icon">📄</div>Строки</div>
+        <div class="chart-controls">${chartTools('chStLines', [{v:'bar',l:'Ст'},{v:'line',l:'Л'}])}</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chStLines"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-head">
+        <div class="chart-box-title"><div class="chart-icon">📦</div>Упаковки</div>
+        <div class="chart-controls">${chartTools('chStPacks', [{v:'bar',l:'Ст'},{v:'line',l:'Л'}])}</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chStPacks"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row charts-row-2">
+    <div class="chart-box">
+      <div class="chart-box-head">
+        <div class="chart-box-title"><div class="chart-icon">⏱</div>Отработанные часы</div>
+        <div class="chart-controls">${chartTools('chStHours', [{v:'bar',l:'Столбцы'},{v:'line',l:'Линия'}])}</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chStHours"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-head">
+        <div class="chart-box-title"><div class="chart-icon">🗄</div>Занятые ячейки</div>
+        <div class="chart-controls">${chartTools('chStCells', [{v:'bar',l:'Столбцы'},{v:'line',l:'Линия'}])}</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chStCells"></canvas></div>
+    </div>
+  </div>`;
+
+  const sd = State.strokiDetail;
+  html += `<div class="chart-box">
+    <div class="chart-box-head">
+      <div class="chart-box-title"><div class="chart-icon">📋</div>Детализация по строкам</div>
+      <div class="chart-controls">
+        ${viewToggle('strokiDetailView', [{v:'table',l:'Таблица'},{v:'chart',l:'Столбцы'}])}
+        ${sd.view === 'chart' ? chartTools('chDetailChart', null, false) : ''}
+      </div>
+    </div>
+    ${renderMonthChipsForDetail('strokiDetail', null)}
+    ${sd.view === 'table' ? '<div class="table-wrap"><table id="strokiTable"></table></div>' : '<div class="chart-wrap"><canvas id="chDetailChart"></canvas></div>'}
+  </div>`;
+
+  html += `<div class="chart-box">
+    <div class="chart-box-head">
+      <div class="chart-box-title"><div class="chart-icon">📊</div>Сводная таблица показателей</div>
+    </div>
+    <div class="table-wrap"><table id="inoeTable"></table></div>
+  </div>`;
+
+  html += '</div>';
+  cont.innerHTML = html;
+
+  initScrollAnimations();
+
+  document.querySelectorAll('[onclick^="switchView(\'strokiDetailView\'"]').forEach(btn => {
+    const v = btn.getAttribute('onclick').match(/'(\w+)'\)$/)?.[1];
+    if (v) btn.onclick = () => { State.strokiDetail.view = v; renderAll(); };
+  });
+  document.querySelectorAll('[onclick^="switchView(\'clientDetailView\'"]').forEach(btn => {
+    const v = btn.getAttribute('onclick').match(/'(\w+)'\)$/)?.[1];
+    if (v) btn.onclick = () => { State.clientDetail.view = v; renderAll(); };
+  });
+
+  const steps = [
+    () => renderKPI(whs, months),
+    () => renderTS(whs, months),
+    () => renderClientDetail(whs),
+    () => renderStroki(whs, months),
+    () => renderStrokiDetail(whs),
+    () => renderInoe(whs, months)
+  ];
+  steps.forEach(fn => {
+    try { fn(); } catch(e) { console.error(e); }
+  });
+
+  window.scrollTo({ top: sy, behavior: 'auto' });
+}
+
+window.setClientMode = function(mode) {
+  State.clientDetail.mode = mode;
+  if (mode === 'multi') {
+    State.clientDetail.months = new Set(['all']);
+  }
+  renderAll();
+};
+
+function renderKPI(whs, months) {
+  const grid = document.getElementById('kpiGrid');
+  const cards = [];
+
+  const tsTotals = { recv:0, ship:0, total:0 };
+  whs.forEach(w => {
+    const s = sumTS(w, months);
+    tsTotals.recv += s.recv;
+    tsTotals.ship += s.ship;
+    tsTotals.total += s.total;
+  });
+  const deltaRecv = State.wh === 'all'
+    ? lastMonthDelta(months, mk => (State.ts['11'][mk]?.totalRecv || 0) + (State.ts['12'][mk]?.totalRecv || 0))
+    : lastMonthDelta(months, mk => State.ts[State.wh][mk]?.totalRecv || 0);
+  const deltaShip = State.wh === 'all'
+    ? lastMonthDelta(months, mk => (State.ts['11'][mk]?.totalShip || 0) + (State.ts['12'][mk]?.totalShip || 0))
+    : lastMonthDelta(months, mk => State.ts[State.wh][mk]?.totalShip || 0);
+  const deltaTotal = State.wh === 'all'
+    ? lastMonthDelta(months, mk => (State.ts['11'][mk]?.total || 0) + (State.ts['12'][mk]?.total || 0))
+    : lastMonthDelta(months, mk => State.ts[State.wh][mk]?.total || 0);
+
+  cards.push(kpiCard('Принято ТС', fmtInt(tsTotals.recv), `за ${months.length} мес.`, deltaRecv));
+  cards.push(kpiCard('Отгружено ТС', fmtInt(tsTotals.ship), `за ${months.length} мес.`, deltaShip));
+  cards.push(kpiCard('Всего обработано ТС', fmtInt(tsTotals.total), 'суммарно', deltaTotal));
+
+  const stTotals = { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0, cells:0 };
+  whs.forEach(w => {
+    const s = sumStroki(w, months);
+    stTotals.ordersIn += s.ordersIn; stTotals.linesIn += s.linesIn; stTotals.packsIn += s.packsIn;
+    stTotals.ordersOut += s.ordersOut; stTotals.linesOut += s.linesOut; stTotals.packsOut += s.packsOut;
+    stTotals.hours += s.hours; stTotals.cells = Math.max(stTotals.cells, s.cells);
+  });
+  const deltaOrdIn = State.wh === 'all'
+    ? lastMonthDelta(months, mk => (State.stroki['11'][mk]?.totals.ordersIn || 0) + (State.stroki['12'][mk]?.totals.ordersIn || 0))
+    : lastMonthDelta(months, mk => State.stroki[State.wh][mk]?.totals.ordersIn || 0);
+  const deltaLinesIn = State.wh === 'all'
+    ? lastMonthDelta(months, mk => (State.stroki['11'][mk]?.totals.linesIn || 0) + (State.stroki['12'][mk]?.totals.linesIn || 0))
+    : lastMonthDelta(months, mk => State.stroki[State.wh][mk]?.totals.linesIn || 0);
+  const deltaOrdOut = State.wh === 'all'
+    ? lastMonthDelta(months, mk => (State.stroki['11'][mk]?.totals.ordersOut || 0) + (State.stroki['12'][mk]?.totals.ordersOut || 0))
+    : lastMonthDelta(months, mk => State.stroki[State.wh][mk]?.totals.ordersOut || 0);
+  const deltaHours = State.wh === 'all'
+    ? lastMonthDelta(months, mk => (State.stroki['11'][mk]?.totals.hours || 0) + (State.stroki['12'][mk]?.totals.hours || 0))
+    : lastMonthDelta(months, mk => State.stroki[State.wh][mk]?.totals.hours || 0);
+  const deltaCells = State.wh === 'all'
+    ? lastMonthDelta(months, mk => {
+        const a = State.stroki['11'][mk]?.totals.cells || 0;
+        const b = State.stroki['12'][mk]?.totals.cells || 0;
+        return Math.max(a, b);
+      })
+    : lastMonthDelta(months, mk => State.stroki[State.wh][mk]?.totals.cells || 0);
+
+  cards.push(kpiCard('Заказов в приёмке', fmtInt(stTotals.ordersIn), 'суммарно', deltaOrdIn));
+  cards.push(kpiCard('Строк в приёмке', fmtInt(stTotals.linesIn), 'суммарно', deltaLinesIn));
+  cards.push(kpiCard('Заказов в отгрузке', fmtInt(stTotals.ordersOut), 'суммарно', deltaOrdOut));
+  cards.push(kpiCard('Часов отработано', decHoursToTime(stTotals.hours), 'суммарно', deltaHours));
+  cards.push(kpiCard('Занятых ячеек (макс.)', fmtInt(stTotals.cells), 'фактически', deltaCells));
+
+  grid.innerHTML = cards.join('');
+}
+
+function renderTS(whs, months) {
+  const sortedMonths = months.slice().sort((a,b) => monthSortKey(a) - monthSortKey(b));
+  const labels = sortedMonths.map(mk => parseMonthName(mk)?.short || mk);
+
+  const recvS = {}, shipS = {}, totalS = {};
+  whs.forEach(w => { recvS[w] = []; shipS[w] = []; totalS[w] = []; });
+  sortedMonths.forEach(mk => {
+    whs.forEach(w => {
+      const d = State.ts[w][mk];
+      recvS[w].push(d ? d.totalRecv : 0);
+      shipS[w].push(d ? d.totalShip : 0);
+      totalS[w].push(d ? d.total : 0);
+    });
+  });
+
+  const datasets = [];
+  whs.forEach(w => {
+    const c1 = w === '11' ? '#3b82f6' : '#ec4899';
+    const c2 = w === '11' ? '#60a5fa' : '#f472b6';
+    const c3 = w === '11' ? '#1e40af' : '#9d174d';
+    datasets.push({ label: `Принято ${whs.length > 1 ? 'С'+w : ''}`, data: recvS[w], backgroundColor: c1, borderColor: c1 });
+    datasets.push({ label: `Отгружено ${whs.length > 1 ? 'С'+w : ''}`, data: shipS[w], backgroundColor: c2, borderColor: c2 });
+    datasets.push({ label: `Всего ${whs.length > 1 ? 'С'+w : ''}`, data: totalS[w], backgroundColor: c3, borderColor: c3 });
+  });
+  makeChart('chTSBar', labels, datasets, State.views.chTSBar);
+
+  const aggAll = { clients: {} };
+  whs.forEach(w => {
+    const s = sumTS(w, months);
+    Object.entries(s.clients).forEach(([cl, v]) => {
+      if (!aggAll.clients[cl]) aggAll.clients[cl] = { recv:0, ship:0, wh: new Set() };
+      aggAll.clients[cl].recv += v.recv;
+      aggAll.clients[cl].ship += v.ship;
+      aggAll.clients[cl].wh.add(w);
+    });
+  });
+  const clientEntries = Object.entries(aggAll.clients).sort((a,b) => (b[1].recv + b[1].ship) - (a[1].recv + a[1].ship));
+  const topClients = clientEntries.slice(0, 10);
+  const pieLabels = topClients.map(e => e[0].length > 25 ? e[0].substring(0, 22) + '...' : e[0]);
+
+  if (State.views.chTSDist === 'pie') {
+    const totals = topClients.map(e => e[1].recv + e[1].ship);
+    const colors = ['#e85a1e','#3d5a9e','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#14b8a6','#6366f1','#a855f7'];
+    makeChart('chTSDist', pieLabels, [{ data: totals, backgroundColor: colors.slice(0, topClients.length) }], 'pie', {
+      tooltipCb: (ctx) => {
+        const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+        const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+        return `${ctx.label}: ${fmtInt(ctx.raw)} (${pct}%)`;
+      }
+    });
+  } else {
+    const datasetsDist = [
+      { label: 'Принято', data: topClients.map(e => e[1].recv), backgroundColor: '#e85a1e', borderColor: '#e85a1e' },
+      { label: 'Отгружено', data: topClients.map(e => e[1].ship), backgroundColor: '#3d5a9e', borderColor: '#3d5a9e' }
+    ];
+    makeChart('chTSDist', pieLabels, datasetsDist, State.views.chTSDist, {
+      indexAxis: 'y',
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(0,0,0,.04)' } },
+        y: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } }
+      }
+    });
+  }
+}
+
+function renderClientDetail(whs) {
+  const cd = State.clientDetail;
+  const targetMonths = getDetailMonths(cd);
+  const showWh = whs.length > 1;
+
+  if (cd.view === 'chart' || cd.view === 'pie') {
+    const agg = {};
+    whs.forEach(w => {
+      const s = sumTS(w, targetMonths);
+      Object.entries(s.clients).forEach(([cl, v]) => {
+        if (!agg[cl]) agg[cl] = { recv:0, ship:0, wh: new Set() };
+        agg[cl].recv += v.recv;
+        agg[cl].ship += v.ship;
+        agg[cl].wh.add(w);
+      });
+    });
+    const sorted = Object.entries(agg).sort((a,b) => (b[1].recv + b[1].ship) - (a[1].recv + a[1].ship)).slice(0, 12);
+    const labels = sorted.map(e => e[0].length > 20 ? e[0].substring(0, 17) + '...' : e[0]);
+    if (cd.view === 'pie') {
+      const totals = sorted.map(e => e[1].recv + e[1].ship);
+      const colors = ['#e85a1e','#3d5a9e','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#14b8a6','#6366f1','#a855f7','#64748b','#f97316'];
+      makeChart('chClientChart', labels, [{ data: totals, backgroundColor: colors.slice(0, sorted.length) }], 'pie', {
+        tooltipCb: (ctx) => {
+          const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+          const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+          return `${ctx.label}: ${fmtInt(ctx.raw)} (${pct}%)`;
+        }
+      });
+    } else {
+      const ds = [
+        { label: 'Принято', data: sorted.map(e => e[1].recv), backgroundColor: '#e85a1e', borderColor: '#e85a1e' },
+        { label: 'Отгружено', data: sorted.map(e => e[1].ship), backgroundColor: '#3d5a9e', borderColor: '#3d5a9e' }
+      ];
+      makeChart('chClientChart', labels, ds, State.views.chClientChart);
+    }
+    return;
+  }
+
+  const tbl = document.getElementById('tsTable');
+  if (!tbl) return;
+
+  const aggFn = (wlist, mlist) => {
+    const out = {};
+    wlist.forEach(w => {
+      const s = sumTS(w, mlist);
+      Object.entries(s.clients).forEach(([cl, v]) => {
+        if (!out[cl]) out[cl] = { recv:0, ship:0, total:0, wh: new Set() };
+        out[cl].recv += v.recv;
+        out[cl].ship += v.ship;
+        out[cl].total += v.recv + v.ship;
+        out[cl].wh.add(w);
+      });
+    });
+    return out;
+  };
+
+  const deltaInfo = computeDeltaForDetail('clientDetail', whs, targetMonths, aggFn);
+
+  const agg = aggFn(whs, targetMonths);
+  const sorted = Object.entries(agg).sort((a,b) => (b[1].total) - (a[1].total));
+
+  const colRecvOn = isDeltaColOn('clientDetail', 'recv');
+  const colShipOn = isDeltaColOn('clientDetail', 'ship');
+  const colTotalOn = isDeltaColOn('clientDetail', 'total');
+
+  let rows = `<thead><tr>
+    <th>Контрагент</th>
+    <th class="num">Принято${cd.mode === 'multi' ? `<span class="delta-toggle ${colRecvOn ? 'on' : ''}" onclick="toggleDeltaCol('clientDetail','recv')" title="Дельта">Δ</span>` : ''}</th>
+    <th class="num">Отгружено${cd.mode === 'multi' ? `<span class="delta-toggle ${colShipOn ? 'on' : ''}" onclick="toggleDeltaCol('clientDetail','ship')" title="Дельта">Δ</span>` : ''}</th>
+    <th class="num">Всего${cd.mode === 'multi' ? `<span class="delta-toggle ${colTotalOn ? 'on' : ''}" onclick="toggleDeltaCol('clientDetail','total')" title="Дельта">Δ</span>` : ''}</th>
+    <th class="num">Доля</th>
+  </tr></thead><tbody>`;
+  const totalAll = Object.values(agg).reduce((s,v) => s + v.total, 0);
+  sorted.forEach(([cl, v]) => {
+    const pct = totalAll > 0 ? (v.total / totalAll * 100).toFixed(1) : '0.0';
+    const nameHtml = `<div class="client-name"><span>${cl || '—'}</span>${showWh ? clientBadge(v.wh) : ''}</div>`;
+    const dRecv = deltaInfo?.deltaMap?.[cl]?.recv;
+    const dShip = deltaInfo?.deltaMap?.[cl]?.ship;
+    const dTotal = deltaInfo?.deltaMap?.[cl]?.total;
+    rows += `<tr>
+      <td>${nameHtml}</td>
+      <td class="num">${fmtInt(v.recv)}${deltaCell(dRecv, colRecvOn)}</td>
+      <td class="num">${fmtInt(v.ship)}${deltaCell(dShip, colShipOn)}</td>
+      <td class="num"><strong>${fmtInt(v.total)}</strong>${deltaCell(dTotal, colTotalOn)}</td>
+      <td class="num">${pct}%</td>
+    </tr>`;
+  });
+  const recvAll = Object.values(agg).reduce((s,v)=>s+v.recv,0);
+  const shipAll = Object.values(agg).reduce((s,v)=>s+v.ship,0);
+  rows += `<tr class="totals-row">
+    <td>ИТОГО</td>
+    <td class="num">${fmtInt(recvAll)}</td>
+    <td class="num">${fmtInt(shipAll)}</td>
+    <td class="num">${fmtInt(totalAll)}</td>
+    <td class="num">100%</td>
+  </tr></tbody>`;
+  tbl.innerHTML = rows;
+}
+
+function renderStroki(whs, months) {
+  const sortedMonths = months.slice().sort((a,b) => monthSortKey(a) - monthSortKey(b));
+  const labels = sortedMonths.map(mk => parseMonthName(mk)?.short || mk);
+
+  function series(field) {
+    const out = {};
+    whs.forEach(w => {
+      out[w] = sortedMonths.map(mk => {
+        const d = State.stroki[w][mk];
+        return d ? (d.totals[field] || 0) : 0;
+      });
+    });
+    return out;
+  }
+
+  function makeInOutChart(canvasId, inField, outField) {
+    const sIn = series(inField), sOut = series(outField);
+    const ds = [];
+    whs.forEach(w => {
+      const c1 = w === '11' ? '#3b82f6' : '#ec4899';
+      const c2 = w === '11' ? '#93c5fd' : '#f9a8d4';
+      ds.push({ label: `Приём ${whs.length > 1 ? 'С'+w : ''}`, data: sIn[w], backgroundColor: c1, borderColor: c1 });
+      ds.push({ label: `Отгрузка ${whs.length > 1 ? 'С'+w : ''}`, data: sOut[w], backgroundColor: c2, borderColor: c2 });
+    });
+    makeChart(canvasId, labels, ds, State.views[canvasId]);
+  }
+
+  makeInOutChart('chStOrders', 'ordersIn', 'ordersOut');
+  makeInOutChart('chStLines', 'linesIn', 'linesOut');
+  makeInOutChart('chStPacks', 'packsIn', 'packsOut');
+
+  const hIn = series('hours');
+  const dsH = whs.map(w => ({
+    label: `Склад ${w}`, data: hIn[w],
+    backgroundColor: w === '11' ? '#e85a1e' : '#3d5a9e',
+    borderColor: w === '11' ? '#e85a1e' : '#3d5a9e'
+  }));
+  makeChart('chStHours', labels, dsH, State.views.chStHours, {
+    tooltipCb: (ctx) => `${ctx.dataset.label}: ${decHoursToTime(ctx.raw)}`,
+    yTickCb: (v) => decHoursToTime(v)
+  });
+
+  const cIn = series('cells');
+  const dsC = whs.map(w => ({
+    label: `Склад ${w}`, data: cIn[w],
+    borderColor: w === '11' ? '#3b82f6' : '#ec4899',
+    backgroundColor: w === '11' ? 'rgba(59,130,246,.2)' : 'rgba(236,72,153,.2)',
+    pointBackgroundColor: w === '11' ? '#3b82f6' : '#ec4899'
+  }));
+  makeChart('chStCells', labels, dsC, State.views.chStCells);
+}
+
+function renderStrokiDetail(whs) {
+  const sd = State.strokiDetail;
+  const targetMonths = getDetailMonths(sd);
+  const showWh = whs.length > 1;
+
+  const aggFn = (wlist, mlist) => {
+    const out = {};
+    wlist.forEach(w => {
+      const s = sumStroki(w, mlist);
+      Object.entries(s.clients).forEach(([cl, v]) => {
+        if (!out[cl]) out[cl] = { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0, wh: new Set() };
+        const a = out[cl];
+        a.ordersIn += v.ordersIn; a.linesIn += v.linesIn; a.packsIn += v.packsIn;
+        a.ordersOut += v.ordersOut; a.linesOut += v.linesOut; a.packsOut += v.packsOut;
+        a.hours += v.hours; a.wh.add(w);
+      });
+    });
+    return out;
+  };
+
+  if (sd.view === 'chart') {
+    const agg = aggFn(whs, targetMonths);
+    const sorted = Object.entries(agg).sort((a,b) => (b[1].linesIn + b[1].linesOut) - (a[1].linesIn + a[1].linesOut)).slice(0, 12);
+    const labels = sorted.map(e => e[0].length > 20 ? e[0].substring(0, 17) + '...' : e[0]);
+    const ds = [
+      { label: 'Строки приём', data: sorted.map(e => e[1].linesIn), backgroundColor: '#e85a1e', borderColor: '#e85a1e' },
+      { label: 'Строки отгрузка', data: sorted.map(e => e[1].linesOut), backgroundColor: '#3d5a9e', borderColor: '#3d5a9e' }
+    ];
+    makeChart('chDetailChart', labels, ds, 'bar');
+    return;
+  }
+
+  const deltaInfo = computeDeltaBetween(whs, targetMonths, aggFn);
+
+  const agg = aggFn(whs, targetMonths);
+  const sorted = Object.entries(agg).sort((a,b) => (b[1].linesIn + b[1].linesOut) - (a[1].linesIn + a[1].linesOut));
+
+  const tbl = document.getElementById('strokiTable');
+  if (!tbl) return;
+
+  const cols = [
+    { k: 'ordersIn', l: 'Заказы приём' },
+    { k: 'linesIn', l: 'Строки приём' },
+    { k: 'packsIn', l: 'Упак. приём' },
+    { k: 'ordersOut', l: 'Заказы отгр.' },
+    { k: 'linesOut', l: 'Строки отгр.' },
+    { k: 'packsOut', l: 'Упак. отгр.' },
+    { k: 'hours', l: 'Часы', isHours: true }
+  ];
+
+  let headers = '<tr><th>Контрагент</th>';
+  cols.forEach(c => {
+    const on = isDeltaColOn('strokiDetail', c.k);
+    const dt = `<span class="delta-toggle ${on ? 'on' : ''}" onclick="toggleDeltaCol('strokiDetail','${c.k}')" title="Дельта">Δ</span>`;
+    headers += `<th class="num">${c.l}${dt}</th>`;
+  });
+  headers += '</tr>';
+
+  let rows = `<thead>${headers}</thead><tbody>`;
+  const t = { ordersIn:0, linesIn:0, packsIn:0, ordersOut:0, linesOut:0, packsOut:0, hours:0 };
+  sorted.forEach(([cl, v]) => {
+    const nameHtml = `<div class="client-name"><span>${cl || '—'}</span>${showWh ? clientBadge(v.wh) : ''}</div>`;
+    let row = `<td>${nameHtml}</td>`;
+    cols.forEach(c => {
+      const val = v[c.k];
+      const formatted = c.isHours ? decHoursToTime(val) : c.k.includes('packs') ? fmt(val) : fmtInt(val);
+      const d = deltaInfo?.deltaMap?.[cl]?.[c.k];
+      const on = isDeltaColOn('strokiDetail', c.k);
+      row += `<td class="num">${formatted}${deltaCell(d, on)}</td>`;
+    });
+    rows += `<tr>${row}</tr>`;
+    t.ordersIn += v.ordersIn; t.linesIn += v.linesIn; t.packsIn += v.packsIn;
+    t.ordersOut += v.ordersOut; t.linesOut += v.linesOut; t.packsOut += v.packsOut;
+    t.hours += v.hours;
+  });
+  let totRow = '<td>ИТОГО</td>';
+  cols.forEach(c => {
+    const val = t[c.k];
+    const formatted = c.isHours ? decHoursToTime(val) : c.k.includes('packs') ? fmt(val) : fmtInt(val);
+    totRow += `<td class="num">${formatted}</td>`;
+  });
+  rows += `<tr class="totals-row">${totRow}</tr></tbody>`;
+  tbl.innerHTML = rows;
+}
+
+function renderInoe(whs, months) {
+  const sortedMonths = months.slice().sort((a,b) => monthSortKey(a) - monthSortKey(b));
+  const labels = sortedMonths.map(mk => parseMonthName(mk)?.short || mk);
+  const collected = collectInoe(sortedMonths);
+
+  const tbl = document.getElementById('inoeTable');
+  if (tbl) {
+    const headerDefs = ['Месяц'];
+    if (whs.includes('11')) {
+      headerDefs.push({ t:'Gate-to-gate', f:'g2g11' }, { t:'Вагоны', f:'wagons11' }, { t:'Контейнеры', f:'cont11' }, { t:'Сухой склад %', f:'dry11' }, { t:'Холод %', f:'cold11' });
+    }
+    if (whs.includes('12')) {
+      headerDefs.push({ t:'Gate-to-gate', f:'g2g12' }, { t:'Контейнеры', f:'cont12' }, { t:'Сухой склад %', f:'dry12' });
+    }
+    let rows = `<thead><tr>`;
+    headerDefs.forEach((h, i) => {
+      const isNum = i > 0;
+      const title = typeof h === 'string' ? h : h.t;
+      rows += `<th class="${isNum ? 'num' : ''}">${title}</th>`;
+    });
+    rows += `</tr></thead><tbody>`;
+    if (sortedMonths.length === 0) {
+      rows += `<tr><td colspan="${headerDefs.length}" style="text-align:center;padding:30px;color:#94a3b8;">Нет выбранных месяцев</td></tr>`;
+    }
+    sortedMonths.forEach(mk => {
+      const pm = parseMonthName(mk);
+      const d11 = State.inoe['11'][mk];
+      const d12 = State.inoe['12'][mk];
+      const cells = [`<td><strong>${pm ? pm.short : mk}</strong></td>`];
+      headerDefs.slice(1).forEach(h => {
+        let v = null;
+        if (h.f === 'g2g11') v = d11 ? d11.g2g : null;
+        else if (h.f === 'g2g12') v = d12 ? d12.g2g : null;
+        else if (h.f === 'wagons11') v = d11 ? d11.wagons : null;
+        else if (h.f === 'cont11') v = d11 ? d11.cont : null;
+        else if (h.f === 'cont12') v = d12 ? d12.cont : null;
+        else if (h.f === 'dry11') v = d11 ? d11.dry : null;
+        else if (h.f === 'cold11') v = d11 ? d11.cold : null;
+        else if (h.f === 'dry12') v = d12 ? d12.dry : null;
+        let txt = '—';
+        if (v !== null && v !== undefined) {
+          if (h.f.includes('dry') || h.f.includes('cold')) txt = v.toFixed(1) + '%';
+          else if (h.f.includes('g2g')) txt = v.toFixed(1);
+          else txt = fmtInt(v);
+        }
+        cells.push(`<td class="num">${txt}</td>`);
+      });
+      rows += `<tr>${cells.join('')}</tr>`;
+    });
+    rows += `</tbody>`;
+    tbl.innerHTML = rows;
+  }
+
+  function seriesFor(wh, field) {
+    const arr = collected[wh][field] || [];
+    return sortedMonths.map(mk => {
+      const found = arr.find(x => x.mk === mk);
+      return found ? found.v : null;
+    });
+  }
+
+  function makeLineOrBar(canvasId, datasets, view, options = {}) {
+    try {
+      const filtered = datasets.filter(ds => ds.data.some(v => v !== null));
+      if (filtered.length === 0) return;
+      const ds = filtered.map(d => {
+        if (view === 'line') return { ...d, spanGaps: true };
+        return d;
+      });
+      makeChart(canvasId, labels, ds, view, options);
+    } catch(e) { console.error(e); }
+  }
+
+  const hasG2G = (whs.includes('11') && hasAny(collected['11'].g2g)) || (whs.includes('12') && hasAny(collected['12'].g2g));
+  const hasWag = (whs.includes('11') && (hasAny(collected['11'].wagons) || hasAny(collected['11'].cont))) || (whs.includes('12') && hasAny(collected['12'].cont));
+  const hasDry = (whs.includes('11') && hasAny(collected['11'].dry)) || (whs.includes('12') && hasAny(collected['12'].dry));
+  const hasCold = whs.includes('11') && hasAny(collected['11'].cold);
+
+  if (hasG2G) {
+    const ds = whs.map(w => ({
+      label: `Склад ${w}`, data: seriesFor(w,'g2g'),
+      borderColor: w === '11' ? '#3b82f6' : '#ec4899',
+      backgroundColor: w === '11' ? 'rgba(59,130,246,.2)' : 'rgba(236,72,153,.2)',
+      pointBackgroundColor: w === '11' ? '#3b82f6' : '#ec4899'
+    }));
+    makeLineOrBar('chInG2G', ds, State.views.chInG2G);
+  }
+
+  if (hasWag) {
+    const ds = [];
+    if (whs.includes('11')) {
+      ds.push({ label: 'Вагоны', data: seriesFor('11','wagons'), backgroundColor: '#10b981', borderColor: '#10b981' });
+      ds.push({ label: 'Контейнеры', data: seriesFor('11','cont'), backgroundColor: '#e85a1e', borderColor: '#e85a1e' });
+    }
+    if (whs.includes('12')) {
+      ds.push({ label: 'Контейнеры С12', data: seriesFor('12','cont'), backgroundColor: '#3d5a9e', borderColor: '#3d5a9e' });
+    }
+    makeLineOrBar('chInWag', ds, State.views.chInWag);
+  }
+
+  if (hasDry) {
+    const ds = whs.map(w => ({
+      label: `Склад ${w}`, data: seriesFor(w,'dry'),
+      borderColor: w === '11' ? '#f59e0b' : '#8b5cf6',
+      backgroundColor: w === '11' ? 'rgba(245,158,11,.2)' : 'rgba(139,92,246,.2)',
+      pointBackgroundColor: w === '11' ? '#f59e0b' : '#8b5cf6'
+    }));
+    makeLineOrBar('chInDry', ds, State.views.chInDry, {
+      tooltipCb: (ctx) => `${ctx.dataset.label}: ${ctx.raw !== null && ctx.raw !== undefined ? ctx.raw.toFixed(1)+'%' : '—'}`,
+      yTickCb: (v) => v + '%'
+    });
+  }
+
+  if (hasCold && whs.includes('11')) {
+    const data = seriesFor('11','cold');
+    makeLineOrBar('chInCold', [{
+      label: 'Склад 11', data,
+      borderColor: '#06b6d4',
+      backgroundColor: 'rgba(6,182,212,.2)',
+      pointBackgroundColor: '#06b6d4'
+    }], State.views.chInCold, {
+      tooltipCb: (ctx) => `${ctx.dataset.label}: ${ctx.raw !== null && ctx.raw !== undefined ? ctx.raw.toFixed(1)+'%' : '—'}`,
+      yTickCb: (v) => v + '%'
+    });
+  }
+}
+
+init();
+</script>
+</body>
+</html>

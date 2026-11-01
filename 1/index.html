@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Обработка ТС</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:4px}
+::-webkit-scrollbar-thumb{background:rgba(61,90,158,.35);border-radius:4px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a}
+.container{max-width:1600px;width:96%;margin:0 auto;position:relative}
+
+.back-btn{position:fixed;top:20px;left:20px;width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:7px 9px 20px rgba(30,30,60,.16);transition:all .25s;z-index:1000;text-decoration:none;border:none;cursor:pointer}
+.back-btn:hover{background:rgba(61,90,158,.08);transform:translateY(-2px);box-shadow:9px 12px 26px rgba(30,30,60,.22)}
+.back-btn svg{width:24px;height:24px;fill:#3d5a9e}
+
+.scroll-top-btn{position:fixed;bottom:24px;right:24px;width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:7px 9px 20px rgba(30,30,60,.16);transition:all .25s;z-index:1000;border:none;cursor:pointer;opacity:0;pointer-events:none;transform:translateY(10px)}
+.scroll-top-btn.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
+.scroll-top-btn:hover{background:rgba(61,90,158,.08);transform:translateY(-2px);box-shadow:9px 12px 26px rgba(30,30,60,.22)}
+.scroll-top-btn svg{width:24px;height:24px;fill:#3d5a9e}
+
+.header{text-align:center;margin-bottom:24px;padding:22px 20px;background:linear-gradient(135deg,#e85a1e 0%,#ff6f32 50%,#ff8855 100%);border-radius:16px;box-shadow:14px 18px 44px rgba(200,70,20,.35);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.header-icon-box{width:64px;height:64px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;backdrop-filter:blur(4px);box-shadow:0 8px 16px rgba(0,0,0,.1);animation:floatIcon 3s ease-in-out infinite}
+.header-icon-box svg{width:42px;height:42px}
+@keyframes floatIcon{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.03)}}
+.header h1{font-size:22px;color:#fff;font-weight:700}
+.header .subtitle{font-size:13px;color:rgba(255,255,255,.85);margin-top:4px}
+
+.card{background:#f5f5fa;border-radius:16px;padding:24px;margin-bottom:20px;border:1px solid rgba(0,0,0,.06);box-shadow:14px 18px 44px rgba(30,30,60,.15)}
+.card h2{font-size:15px;margin-bottom:16px;color:#4a4a65;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:8px;font-weight:600;text-transform:uppercase}
+
+.upload-zone{border:2px dashed rgba(61,90,158,.4);padding:35px;text-align:center;border-radius:12px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.6);display:block}
+.upload-zone:hover{background:#fff;border-color:#3d5a9e}
+.upload-zone input{display:none}
+.upload-zone svg{width:40px;height:40px;fill:#3d5a9e;margin-bottom:8px}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.stat-card{background:#fff;border-radius:12px;padding:16px 18px;border:1px solid rgba(0,0,0,.06);box-shadow:0 4px 12px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:6px;min-height:84px}
+.stat-card .stat-label{font-size:11px;color:#7a7b90;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.stat-card .stat-value{font-size:22px;font-weight:700;color:#2a2a3a}
+.stat-card .stat-sub{font-size:11px;color:#7a7b90;margin-top:2px}
+.stat-card .stat-sub b{color:#4a4a65}
+.stat-card.green .stat-value{color:#2c6e49}
+.stat-card.red .stat-value{color:#d9534f}
+.stat-card.orange .stat-value{color:#e85a1e}
+.stat-card.blue .stat-value{color:#3d5a9e}
+
+.filters-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+
+.custom-select{position:relative;min-width:240px}
+.custom-select-trigger{height:42px;padding:0 14px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;font-size:14px;color:#1a1a2e;outline:none;transition:all .2s;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:inherit}
+.custom-select-trigger:hover{border-color:rgba(0,0,0,.3)}
+.custom-select-trigger:focus,.custom-select-trigger.active{border-color:#e85a1e;box-shadow:0 0 0 3px rgba(232,90,30,.15)}
+.custom-select-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.custom-select-trigger svg{width:16px;height:16px;fill:#7a7b90;flex-shrink:0;transition:transform .2s}
+.custom-select-trigger.active svg{transform:rotate(180deg)}
+.custom-select-options{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border-radius:10px;border:1px solid rgba(0,0,0,.1);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;display:none;animation:dropIn .15s ease}
+.custom-select-options.opened{display:block}
+@keyframes dropIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.custom-select-option{padding:10px 14px;cursor:pointer;transition:background .15s;font-size:13px;color:#2a2a3a;white-space:nowrap}
+.custom-select-option:hover{background:rgba(232,90,30,.06)}
+.custom-select-option.selected{background:rgba(232,90,30,.1);color:#e85a1e;font-weight:600}
+
+.filter-toggle{height:42px;padding:0 18px;border-radius:10px;border:1px solid rgba(217,83,79,.4);background:rgba(217,83,79,.08);color:#d9534f;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;user-select:none}
+.filter-toggle:hover{background:rgba(217,83,79,.15)}
+.filter-toggle.active{background:#d9534f;color:#fff;border-color:#d9534f}
+
+.tabs{display:flex;gap:10px;margin-bottom:16px}
+.tab-btn{flex:1;height:44px;border-radius:10px;border:1px solid rgba(0,0,0,.1);background:#fff;color:#4a4a65;font-weight:600;cursor:pointer;transition:all .2s;font-size:14px}
+.tab-btn.active{background:#e85a1e;color:#fff;border-color:#e85a1e;box-shadow:4px 6px 16px rgba(232,90,30,.25)}
+
+.data-table-wrap{background:#fff;border-radius:12px;border:1px solid rgba(0,0,0,.06);box-shadow:0 4px 12px rgba(0,0,0,.04);overflow:hidden}
+.data-table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;table-layout:fixed}
+.data-table th{background:#f5f5fa;padding:10px 8px;text-align:left;border-bottom:2px solid rgba(0,0,0,.08);color:#4a4a65;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;z-index:10}
+.data-table td{padding:8px;border-bottom:1px solid rgba(0,0,0,.05);color:#2a2a3a;vertical-align:middle}
+.data-table tbody tr{transition:background .15s}
+.data-table tbody tr:hover{background:rgba(61,90,158,.04)}
+.data-table tbody tr:last-child td{border-bottom:none}
+
+.date-cell{line-height:1.5}
+.date-cell .date-part{font-weight:400;color:#2a2a3a}
+.date-cell .time-part{font-weight:700;color:#2a2a3a}
+
+.expand-arrow{width:26px;height:26px;border-radius:6px;border:none;background:rgba(232,90,30,.1);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.expand-arrow:hover{background:rgba(232,90,30,.25)}
+.expand-arrow svg{width:14px;height:14px;fill:#e85a1e;transition:transform .3s ease}
+.expand-arrow.opened svg{transform:rotate(90deg)}
+
+.detail-row td{padding:0 !important;border-bottom:1px solid rgba(0,0,0,.05)}
+.detail-content{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease;background:rgba(232,90,30,.04);padding:0 20px}
+.detail-content.opened{max-height:300px;padding:14px 20px}
+.detail-badges{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.detail-badges:last-child{margin-bottom:0}
+.detail-badge{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;white-space:nowrap}
+.detail-badge.night{background:rgba(232,90,30,.1);color:#e85a1e}
+.detail-badge.early-days{background:rgba(61,90,158,.1);color:#3d5a9e}
+.detail-badge .detail-badge-time{font-weight:700}
+.detail-item{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.detail-item:last-child{margin-bottom:0}
+.detail-label{font-size:12px;color:#7a7b90;font-weight:600;min-width:320px}
+.detail-value{font-size:13px;color:#2a2a3a;font-weight:600}
+
+.time-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;justify-content:center;height:26px;padding:0 10px;border-radius:7px;font-weight:700;font-size:12px;white-space:nowrap}
+.badge.green{background:rgba(44,110,73,.12);color:#2c6e49}
+.badge.red{background:rgba(217,83,79,.12);color:#d9534f}
+.badge.early{background:rgba(61,90,158,.1);color:#3d5a9e}
+
+.icon-wrap{position:relative;display:inline-flex}
+.mini-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;font-size:13px;cursor:default}
+.mini-icon.night{background:rgba(232,90,30,.1)}
+.mini-icon.early-days{background:rgba(61,90,158,.1)}
+.icon-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#fff;padding:8px 12px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);font-size:11px;font-weight:600;white-space:nowrap;z-index:200;border:1px solid rgba(0,0,0,.08)}
+.icon-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff}
+.icon-wrap:hover .icon-tooltip{display:block}
+.icon-tooltip.night-tt{color:#e85a1e}
+.icon-tooltip.early-days-tt{color:#3d5a9e}
+
+.warning-wrap{position:relative;display:inline-flex}
+.warning-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:linear-gradient(145deg,#e74c3c,#c0392b);box-shadow:0 3px 8px rgba(217,83,79,.45),inset 0 1px 2px rgba(255,255,255,.3);cursor:help}
+.warning-icon svg{width:14px;height:14px;fill:#fff}
+.warning-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#fff;padding:8px 12px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);font-size:11px;font-weight:600;color:#d9534f;white-space:nowrap;z-index:200;border:1px solid rgba(217,83,79,.2)}
+.warning-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff}
+.warning-wrap:hover .warning-tooltip{display:block}
+
+.comment-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:26px;padding:0 10px;border-radius:7px;background:rgba(142,68,173,.1);border:1px solid rgba(142,68,173,.3);color:#8e44ad;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.comment-btn:hover{background:rgba(142,68,173,.2);border-color:#8e44ad}
+.comment-btn svg{width:12px;height:12px;fill:#8e44ad}
+
+.sys-diff{font-size:10px;color:#7a7b90}
+.sys-diff b{color:#4a4a65;font-weight:600}
+
+.empty-state{text-align:center;padding:50px;color:#7a7b90;font-size:14px;background:#fff;border-radius:12px;border:1px dashed rgba(0,0,0,.1)}
+
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:2000;animation:fadeIn .2s}
+.modal-card{background:#fff;padding:24px 28px;border-radius:16px;max-width:520px;width:90%;text-align:center;box-shadow:0 12px 32px rgba(0,0,0,.2);border:1px solid rgba(0,0,0,.08)}
+.modal-title{font-size:17px;font-weight:700;color:#2a2a3a;margin-bottom:12px}
+.modal-text{font-size:14px;color:#4a4a65;margin-bottom:22px;line-height:1.55;text-align:left;white-space:pre-wrap;word-wrap:break-word}
+.modal-btn{height:40px;padding:0 28px;border-radius:10px;border:none;background:#e85a1e;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 4px 12px rgba(232,90,30,.3);margin:0 4px}
+.modal-btn:hover{background:#ff6f32}
+
+@keyframes fadeIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+
+#mainWorkspace{display:none}
+
+@media (max-width:768px){
+  .stats-row{grid-template-columns:1fr 1fr}
+  .filters-row{flex-direction:column;align-items:stretch}
+  .custom-select{min-width:100%;width:100%}
+  .tabs{flex-direction:column}
+  .tab-btn{flex:none}
+}
+</style>
+</head>
+<body>
+
+<a href="https://okkam.space/" class="back-btn" title="Назад">
+  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+
+<button class="scroll-top-btn" id="scrollTopBtn" title="Наверх">
+  <svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+</button>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12,6 12,12 16,14"/>
+      </svg>
+    </div>
+    <h1>Обработка ТС</h1>
+    <div class="subtitle">просчёт времени обработки ТС</div>
+  </div>
+
+  <div class="card" id="uploadCard">
+    <h2>Загрузка файла</h2>
+    <label class="upload-zone" id="dropZone">
+      <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <br>
+      <strong>Нажмите для выбора XLSX или XLS файла</strong> или перетащите его сюда
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </label>
+    <div id="statusMsg" style="text-align:center;margin-top:12px;font-weight:600;font-size:14px;color:#d9534f"></div>
+  </div>
+
+  <div id="mainWorkspace">
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card orange">
+        <div class="stat-label">Обработанных ТС</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Просроченных ТС</div>
+        <div class="stat-value" id="statLate">0</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Среднее время обработки</div>
+        <div class="stat-value" id="statAvg">—</div>
+        <div class="stat-sub">после планового прихода: <b id="statAvgAfterPlan">—</b></div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Эффективность</div>
+        <div class="stat-value" id="statEfficiency">—</div>
+      </div>
+    </div>
+
+    <div class="filters-row">
+      <div class="custom-select" id="kontragentSelect">
+        <button class="custom-select-trigger" id="kontragentTrigger">
+          <span id="kontragentLabel">Все контрагенты</span>
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="custom-select-options" id="kontragentOptions"></div>
+      </div>
+      <button class="filter-toggle" id="filterLate">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <span>Только просроченные</span>
+      </button>
+    </div>
+
+    <div class="tabs" id="tabsContainer"></div>
+
+    <div id="tableContainer"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-title" id="modalTitle">Уведомление</div>
+    <div class="modal-text" id="modalText"></div>
+    <button class="modal-btn" onclick="closeModal()">Понятно</button>
+  </div>
+</div>
+
+<script>
+let globalRows = [];
+let currentTab = '';
+let filterKontragent = '';
+let filterLateOnly = false;
+
+const WAREHOUSE_KONTRAGENTS = {
+  'Склад 11': ['АГРО-АВТО ООО', 'КОЛГЕЙТ-ПАЛМОЛИВ АО', 'КРЦ ЭФКО-КАСКАД ООО', 'МЕТРО КЭШ ЭНД КЕРРИ ООО', 'МУЛТОН ПАРТНЕРС ООО', 'ЭРМАНН ООО'],
+  'Склад 12': ['МУЛТОН ПАРТНЕРС ООО', 'РЕГИОНТРАНС ООО']
+};
+
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const statusMsg = document.getElementById('statusMsg');
+const uploadCard = document.getElementById('uploadCard');
+const mainWorkspace = document.getElementById('mainWorkspace');
+const tabsContainer = document.getElementById('tabsContainer');
+const tableContainer = document.getElementById('tableContainer');
+const filterLateEl = document.getElementById('filterLate');
+const kontragentTrigger = document.getElementById('kontragentTrigger');
+const kontragentOptions = document.getElementById('kontragentOptions');
+const kontragentLabel = document.getElementById('kontragentLabel');
+const scrollTopBtn = document.getElementById('scrollTopBtn');
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 300) {
+    scrollTopBtn.classList.add('visible');
+  } else {
+    scrollTopBtn.classList.remove('visible');
+  }
+});
+
+scrollTopBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+function showAlert(text, title = 'Уведомление') {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+function cleanKontragent(name) {
+  if (!name) return '';
+  return name.replace(/\s+(ООО|АО)\s*$/i, '').trim();
+}
+
+function parseRuDate(str) {
+  if (!str || typeof str !== 'string') return null;
+  const s = str.trim();
+  let m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6]));
+    if (!isNaN(d.getTime())) return d;
+  }
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), 0);
+    if (!isNaN(d.getTime())) return d;
+  }
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 0, 0, 0);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function toJsDate(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (val instanceof Date) {
+    if (!isNaN(val.getTime())) return val;
+    return null;
+  }
+  if (typeof val === 'object') {
+    if (val.result !== undefined) {
+      if (val.result instanceof Date) return val.result;
+      if (typeof val.result === 'number') {
+        const utcDays = val.result - 25569;
+        return new Date(utcDays * 86400 * 1000);
+      }
+      if (typeof val.result === 'string') {
+        const parsed = parseRuDate(val.result);
+        if (parsed) return parsed;
+        const d = new Date(val.result);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    if (val.text) {
+      const parsed = parseRuDate(val.text);
+      if (parsed) return parsed;
+    }
+    return null;
+  }
+  if (typeof val === 'number') {
+    const utcDays = val - 25569;
+    return new Date(utcDays * 86400 * 1000);
+  }
+  if (typeof val === 'string') {
+    const parsed = parseRuDate(val);
+    if (parsed) return parsed;
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function formatDateSplit(d) {
+  if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '—';
+  const pad = n => String(n).padStart(2, '0');
+  const datePart = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+  const timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `<div class="date-cell"><div class="date-part">${datePart}</div><div class="time-part">${timePart}</div></div>`;
+}
+
+function formatDate(d) {
+  if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '—';
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatDuration(ms) {
+  const abs = Math.abs(ms);
+  const totalMin = Math.round(abs / 60000);
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  if (hours > 0) return `${hours}ч ${mins}м`;
+  return `${mins}м`;
+}
+
+function formatDurationFull(ms) {
+  const abs = Math.abs(ms);
+  const totalSec = Math.floor(abs / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  if (hours > 0) return `${hours}ч ${mins}м ${secs}с`;
+  if (mins > 0) return `${mins}м ${secs}с`;
+  return `${secs}с`;
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function isNightTime(date) {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
+  const h = date.getHours();
+  return h >= 20 || h < 8;
+}
+
+function getAdjustedStart(date) {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return null;
+  const h = date.getHours();
+  const adjusted = new Date(date);
+  if (h >= 20) {
+    adjusted.setDate(adjusted.getDate() + 1);
+  }
+  adjusted.setHours(8, 0, 0, 0);
+  return adjusted;
+}
+
+function getDateOnly(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getDaysDiff(date1, date2) {
+  const d1 = getDateOnly(date1);
+  const d2 = getDateOnly(date2);
+  return Math.round((d1.getTime() - d2.getTime()) / (24 * 3600 * 1000));
+}
+
+function getCellText(cell) {
+  if (!cell) return '';
+  if (cell.value === null || cell.value === undefined) return '';
+  if (cell.value instanceof Date) return formatDate(cell.value);
+  if (typeof cell.value === 'object') {
+    if (cell.value.result !== undefined) {
+      if (cell.value.result instanceof Date) return formatDate(cell.value.result);
+      return String(cell.value.result ?? '');
+    }
+    if (cell.value.text) return cell.value.text;
+    if (cell.value.richText) return cell.value.richText.map(p => p.text).join('');
+  }
+  if (cell.text) return cell.text;
+  return String(cell.value);
+}
+
+function getCellValue(cell) {
+  if (!cell) return null;
+  if (cell.value === null || cell.value === undefined) return null;
+  if (typeof cell.value === 'object') {
+    if (cell.value.result !== undefined) return cell.value.result;
+  }
+  return cell.value;
+}
+
+async function parseWithExcelJS(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) throw new Error('Файл пуст');
+
+  const rows = [];
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    const cells = {};
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      cells[colNumber] = {
+        value: cell.value,
+        text: cell.text || ''
+      };
+    });
+    rows.push({
+      rowNumber,
+      getCell: (n) => cells[n] || { value: null, text: '' }
+    });
+  });
+  return rows;
+}
+
+async function parseWithSheetJS(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+  
+  if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+    throw new Error('Файл пуст');
+  }
+  
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  
+  if (!worksheet) {
+    throw new Error('Не удалось прочитать лист');
+  }
+  
+  const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null, raw: true });
+  const textRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false, dateNF: 'yyyy-mm-dd hh:mm:ss' });
+
+  const rows = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const rawRow = rawRows[i];
+    const textRow = (textRows && textRows[i]) ? textRows[i] : [];
+    
+    if (!rawRow || !Array.isArray(rawRow) || rawRow.every(c => c === null || c === undefined || c === '')) continue;
+    
+    const cells = {};
+    const maxLen = Math.max(rawRow.length, textRow.length);
+    
+    for (let j = 0; j < maxLen; j++) {
+      const rawVal = (j < rawRow.length) ? rawRow[j] : null;
+      const textVal = (j < textRow.length && textRow[j] !== undefined && textRow[j] !== null) ? String(textRow[j]) : '';
+      cells[j + 1] = {
+        value: rawVal,
+        text: textVal
+      };
+    }
+    
+    rows.push({
+      rowNumber: i + 1,
+      getCell: (n) => cells[n] || { value: null, text: '' }
+    });
+  }
+  return rows;
+}
+
+async function parseFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'xlsx') return await parseWithExcelJS(file);
+  if (ext === 'xls') return await parseWithSheetJS(file);
+  throw new Error('Неподдерживаемый формат файла. Используйте .xlsx или .xls');
+}
+
+fileInput.addEventListener('change', handleFile);
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background = '#fff'; });
+dropZone.addEventListener('dragleave', e => { dropZone.style.background = ''; });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.background = '';
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    handleFile();
+  }
+});
+
+async function handleFile() {
+  if (!fileInput.files.length) return;
+  statusMsg.textContent = 'Обработка файла...';
+  statusMsg.style.color = '#3d5a9e';
+
+  const file = fileInput.files[0];
+
+  try {
+    const rows = await parseFile(file);
+    globalRows = [];
+
+    rows.forEach(row => {
+      if (row.rowNumber === 1) return;
+
+      const aVal = getCellText(row.getCell(1)).trim();
+      if (aVal !== 'Завершено') return;
+
+      const bVal = getCellText(row.getCell(2)).trim();
+      let warehouse = null;
+      if (bVal.includes('Склад 11')) warehouse = 'Склад 11';
+      else if (bVal.includes('Склад 12')) warehouse = 'Склад 12';
+      else return;
+
+      const cVal = getCellText(row.getCell(3)).trim();
+      const allowedList = WAREHOUSE_KONTRAGENTS[warehouse];
+      const cUpper = cVal.toUpperCase();
+      const isAllowed = allowedList.some(k => k.toUpperCase() === cUpper);
+      if (!isAllowed) return;
+
+      const eVal = getCellText(row.getCell(5)).trim();
+      const type = eVal.toLowerCase() === 'да' ? 'Погрузка' : 'Разгрузка';
+      
+      const fCell = row.getCell(6);
+      let fVal = getCellValue(fCell);
+      if (fVal === null || fVal === undefined) fVal = fCell.text;
+      const fDate = toJsDate(fVal);
+      
+      const iCell = row.getCell(9);
+      const jCell = row.getCell(10);
+      const kCell = row.getCell(11);
+      
+      let iVal = getCellValue(iCell);
+      let jVal = getCellValue(jCell);
+      let kVal = getCellValue(kCell);
+      
+      if (iVal === null || iVal === undefined) iVal = iCell.text;
+      if (jVal === null || jVal === undefined) jVal = jCell.text;
+      if (kVal === null || kVal === undefined) kVal = kCell.text;
+      
+      const iDate = toJsDate(iVal);
+      const jDate = toJsDate(jVal);
+      const kDate = toJsDate(kVal);
+      
+      const lVal = getCellText(row.getCell(12)).trim();
+      const mVal = getCellText(row.getCell(13)).trim();
+      const nVal = getCellText(row.getCell(14)).trim();
+
+      globalRows.push({
+        warehouse,
+        kontragent: cVal,
+        type,
+        gateTime: fDate,
+        planTime: iDate,
+        factTime: jDate,
+        departTime: kDate,
+        driver: lVal,
+        comment: mVal,
+        sysDiff: nVal
+      });
+    });
+
+    if (globalRows.length === 0) {
+      statusMsg.textContent = 'Не найдено завершённых строк для складов 11/12!';
+      statusMsg.style.color = '#d9534f';
+      return;
+    }
+
+    uploadCard.style.display = 'none';
+    mainWorkspace.style.display = 'block';
+    statusMsg.textContent = '';
+    renderTabs();
+  } catch (err) {
+    statusMsg.textContent = 'Ошибка чтения файла: ' + err.message;
+    statusMsg.style.color = '#d9534f';
+  }
+}
+
+kontragentTrigger.addEventListener('click', () => {
+  const isOpen = kontragentOptions.classList.contains('opened');
+  if (isOpen) {
+    closeKontragentDropdown();
+  } else {
+    openKontragentDropdown();
+  }
+});
+
+function openKontragentDropdown() {
+  kontragentOptions.classList.add('opened');
+  kontragentTrigger.classList.add('active');
+}
+
+function closeKontragentDropdown() {
+  kontragentOptions.classList.remove('opened');
+  kontragentTrigger.classList.remove('active');
+}
+
+document.addEventListener('click', (e) => {
+  const selectEl = document.getElementById('kontragentSelect');
+  if (selectEl && !selectEl.contains(e.target)) {
+    closeKontragentDropdown();
+  }
+});
+
+function buildKontragentFilter() {
+  const allowedList = WAREHOUSE_KONTRAGENTS[currentTab] || [];
+  kontragentOptions.innerHTML = '';
+
+  const allOpt = document.createElement('div');
+  allOpt.className = 'custom-select-option' + (filterKontragent === '' ? ' selected' : '');
+  allOpt.textContent = 'Все контрагенты';
+  allOpt.onclick = () => {
+    filterKontragent = '';
+    kontragentLabel.textContent = 'Все контрагенты';
+    updateKontragentSelection();
+    closeKontragentDropdown();
+    renderTable();
+  };
+  kontragentOptions.appendChild(allOpt);
+
+  allowedList.forEach(k => {
+    const opt = document.createElement('div');
+    opt.className = 'custom-select-option' + (filterKontragent === k ? ' selected' : '');
+    opt.textContent = cleanKontragent(k);
+    opt.onclick = () => {
+      filterKontragent = k;
+      kontragentLabel.textContent = cleanKontragent(k);
+      updateKontragentSelection();
+      closeKontragentDropdown();
+      renderTable();
+    };
+    kontragentOptions.appendChild(opt);
+  });
+}
+
+function updateKontragentSelection() {
+  const opts = kontragentOptions.querySelectorAll('.custom-select-option');
+  opts.forEach(opt => {
+    opt.classList.remove('selected');
+    if (filterKontragent === '' && opt.textContent === 'Все контрагенты') {
+      opt.classList.add('selected');
+    } else if (opt.textContent === cleanKontragent(filterKontragent) && filterKontragent !== '') {
+      opt.classList.add('selected');
+    }
+  });
+}
+
+filterLateEl.addEventListener('click', () => {
+  filterLateOnly = !filterLateOnly;
+  filterLateEl.classList.toggle('active', filterLateOnly);
+  renderTable();
+});
+
+function computeRowMetrics(row) {
+  const result = {
+    processingMs: null,
+    avgProcessingMs: null,
+    isEarly: false,
+    isLate: false,
+    isNight: false,
+    isEarlyDays: false,
+    earlyDaysCount: 0,
+    displayTime: '—',
+    earlyText: '',
+    factProcessingMs: null
+  };
+
+  if (!row.departTime || !(row.departTime instanceof Date) || isNaN(row.departTime.getTime())) {
+    return result;
+  }
+
+  const hasFact = row.factTime instanceof Date && !isNaN(row.factTime.getTime());
+  const hasPlan = row.planTime instanceof Date && !isNaN(row.planTime.getTime());
+
+  if (hasFact) {
+    result.factProcessingMs = row.departTime.getTime() - row.factTime.getTime();
+  }
+
+  const isWarehouse12 = row.warehouse === 'Склад 12';
+
+  let effectiveFactForAvg = row.factTime;
+
+  if (isWarehouse12 && hasFact && hasPlan) {
+    const planDateOnly = getDateOnly(row.planTime);
+    const factDateOnly = getDateOnly(row.factTime);
+
+    if (planDateOnly > factDateOnly) {
+      result.isEarlyDays = true;
+      result.earlyDaysCount = getDaysDiff(planDateOnly, factDateOnly);
+      const departStart = new Date(row.departTime);
+      departStart.setHours(8, 0, 0, 0);
+      effectiveFactForAvg = departStart;
+    } else if (isNightTime(row.factTime)) {
+      result.isNight = true;
+      effectiveFactForAvg = getAdjustedStart(row.factTime);
+    }
+  } else if (isWarehouse12 && hasFact && isNightTime(row.factTime)) {
+    result.isNight = true;
+    effectiveFactForAvg = getAdjustedStart(row.factTime);
+  }
+
+  if (hasFact && effectiveFactForAvg instanceof Date && !isNaN(effectiveFactForAvg.getTime())) {
+    result.avgProcessingMs = row.departTime.getTime() - effectiveFactForAvg.getTime();
+  }
+
+  let effectiveFactTime = row.factTime;
+  if (isWarehouse12 && hasFact) {
+    if (result.isEarlyDays) {
+      const departStart = new Date(row.departTime);
+      departStart.setHours(8, 0, 0, 0);
+      effectiveFactTime = departStart;
+    } else if (result.isNight) {
+      effectiveFactTime = getAdjustedStart(row.factTime);
+    }
+  }
+
+  let compareDate = null;
+  if (effectiveFactTime instanceof Date && !isNaN(effectiveFactTime.getTime())) {
+    compareDate = effectiveFactTime;
+  }
+  if (hasPlan) {
+    if (compareDate === null || row.planTime > compareDate) {
+      compareDate = row.planTime;
+    }
+  }
+
+  if (!compareDate) return result;
+
+  const diffMs = row.departTime.getTime() - compareDate.getTime();
+  result.processingMs = diffMs;
+
+  if (diffMs < 0) {
+    result.isEarly = true;
+    result.earlyText = 'обработано раньше плана на ' + formatDuration(diffMs);
+  } else {
+    if (diffMs > 3 * 3600 * 1000) result.isLate = true;
+    result.displayTime = formatDuration(diffMs);
+  }
+
+  return result;
+}
+
+function getFilteredRows() {
+  return globalRows.filter(r => {
+    if (r.warehouse !== currentTab) return false;
+    if (filterKontragent && r.kontragent.toUpperCase() !== filterKontragent.toUpperCase()) return false;
+    if (filterLateOnly) {
+      const m = computeRowMetrics(r);
+      if (!m.isLate) return false;
+    }
+    return true;
+  });
+}
+
+function renderTabs() {
+  tabsContainer.innerHTML = '';
+  const warehouses = ['Склад 11', 'Склад 12'];
+  warehouses.forEach((w, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
+    btn.textContent = w;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTab = w;
+      filterKontragent = '';
+      kontragentLabel.textContent = 'Все контрагенты';
+      buildKontragentFilter();
+      renderStats();
+      renderTable();
+    };
+    tabsContainer.appendChild(btn);
+  });
+  currentTab = 'Склад 11';
+  buildKontragentFilter();
+  renderStats();
+  renderTable();
+}
+
+function renderStats() {
+  const rows = globalRows.filter(r => r.warehouse === currentTab);
+  const total = rows.length;
+  let late = 0;
+  let sumMs = 0;
+  let countForAvg = 0;
+  let sumAfterPlan = 0;
+  let countAfterPlan = 0;
+
+  rows.forEach(r => {
+    const m = computeRowMetrics(r);
+    if (m.isLate) late++;
+
+    if (m.avgProcessingMs !== null && m.avgProcessingMs >= 0) {
+      sumMs += m.avgProcessingMs;
+      countForAvg++;
+    }
+
+    if (m.processingMs !== null && m.processingMs >= 0) {
+      sumAfterPlan += m.processingMs;
+      countAfterPlan++;
+    }
+  });
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statLate').textContent = late;
+
+  if (countForAvg > 0) {
+    document.getElementById('statAvg').textContent = formatDurationFull(sumMs / countForAvg);
+  } else {
+    document.getElementById('statAvg').textContent = '—';
+  }
+
+  if (countAfterPlan > 0) {
+    document.getElementById('statAvgAfterPlan').textContent = formatDurationFull(sumAfterPlan / countAfterPlan);
+  } else {
+    document.getElementById('statAvgAfterPlan').textContent = '—';
+  }
+
+  if (total > 0) {
+    const eff = Math.round(((total - late) / total) * 100);
+    document.getElementById('statEfficiency').textContent = eff + '%';
+  } else {
+    document.getElementById('statEfficiency').textContent = '—';
+  }
+}
+
+window.toggleDetail = function(idx) {
+  const content = document.getElementById('detail-' + idx);
+  const arrow = document.getElementById('arrow-' + idx);
+  if (!content) return;
+  if (content.classList.contains('opened')) {
+    content.classList.remove('opened');
+    if (arrow) arrow.classList.remove('opened');
+  } else {
+    content.classList.add('opened');
+    if (arrow) arrow.classList.add('opened');
+  }
+};
+
+function renderTable() {
+  const rows = getFilteredRows();
+
+  if (rows.length === 0) {
+    tableContainer.innerHTML = `
+      <div class="empty-state">
+        Нет строк для отображения по заданным фильтрам.
+      </div>`;
+    return;
+  }
+
+  let html = `
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <colgroup>
+          <col style="width:15%">
+          <col style="width:8%">
+          <col style="width:11%">
+          <col style="width:11%">
+          <col style="width:11%">
+          <col style="width:12%">
+          <col style="width:29%">
+          <col style="width:3%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Контрагент</th>
+            <th>Погрузка/разгрузка</th>
+            <th>План прибытие</th>
+            <th>Факт прибытие</th>
+            <th>Время отбытия</th>
+            <th>Водитель</th>
+            <th>Время обработки относительно плана</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  rows.forEach((r, idx) => {
+    const m = computeRowMetrics(r);
+
+    let timeCell = '';
+    if (m.isEarly) {
+      timeCell += `<span class="badge early">⚡ ${escapeHtml(m.earlyText)}</span>`;
+    } else if (m.processingMs !== null) {
+      const cls = m.isLate ? 'red' : 'green';
+      timeCell += `<span class="badge ${cls}">${escapeHtml(m.displayTime)}</span>`;
+      if (m.isLate && r.comment) {
+        timeCell += `<button class="comment-btn" onclick="showComment(${idx}, '${escapeHtml(r.comment).replace(/'/g, "\\'")}')">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg>
+          комментарий
+        </button>`;
+      }
+      if (m.isLate && !r.comment) {
+        timeCell += `<span class="warning-wrap"><span class="warning-icon"><svg viewBox="0 0 24 24"><path d="M11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg></span><span class="warning-tooltip">отсутствует комментарий в WMS</span></span>`;
+      }
+      if (r.sysDiff) {
+        timeCell += `<span class="sys-diff">системная разница: <b>${escapeHtml(r.sysDiff)}</b></span>`;
+      }
+    } else {
+      timeCell += '—';
+    }
+
+    if (m.isNight) {
+      timeCell += `<span class="icon-wrap"><span class="mini-icon night">🌙</span><span class="icon-tooltip night-tt">ТС прибыло в нерабочее время</span></span>`;
+    }
+    if (m.isEarlyDays) {
+      timeCell += `<span class="icon-wrap"><span class="mini-icon early-days">📅</span><span class="icon-tooltip early-days-tt">ТС прибыло на ${m.earlyDaysCount} дн. раньше</span></span>`;
+    }
+
+    const gateValid = r.gateTime instanceof Date && !isNaN(r.gateTime.getTime());
+    const factValid = r.factTime instanceof Date && !isNaN(r.factTime.getTime());
+    const gateEqualsFact = gateValid && factValid && r.gateTime.getTime() === r.factTime.getTime();
+    const showGate = gateValid && !gateEqualsFact;
+    const showFactToDepart = m.factProcessingMs !== null;
+    const showNightInfo = m.isNight && m.avgProcessingMs !== null;
+    const showEarlyDaysInfo = m.isEarlyDays && m.avgProcessingMs !== null;
+    const hasDetail = showGate || showFactToDepart || showNightInfo || showEarlyDaysInfo;
+
+    let arrowHtml = '';
+    let detailRowHtml = '';
+
+    if (hasDetail) {
+      arrowHtml = `<button class="expand-arrow" id="arrow-${idx}" onclick="toggleDetail(${idx})"><svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></button>`;
+
+      let detailHtml = '';
+
+      if (showNightInfo) {
+        detailHtml += `
+          <div class="detail-badges">
+            <span class="detail-badge night">🌙 ТС прибыло в нерабочее время</span>
+            <span class="detail-badge night">время обработки: <span class="detail-badge-time">${formatDurationFull(m.avgProcessingMs)}</span></span>
+          </div>`;
+      }
+
+      if (showEarlyDaysInfo) {
+        detailHtml += `
+          <div class="detail-badges">
+            <span class="detail-badge early-days">📅 ТС прибыло на ${m.earlyDaysCount} дн. раньше</span>
+            <span class="detail-badge early-days">время обработки: <span class="detail-badge-time">${formatDurationFull(m.avgProcessingMs)}</span></span>
+          </div>`;
+      }
+
+      if (showGate) {
+        detailHtml += `
+          <div class="detail-item">
+            <span class="detail-label">Фактическое время постановки на ворота:</span>
+            <span class="detail-value">${formatDate(r.gateTime)}</span>
+          </div>`;
+      }
+
+      if (showFactToDepart) {
+        detailHtml += `
+          <div class="detail-item">
+            <span class="detail-label">Время обработки с момента регистрации:</span>
+            <span class="detail-value">${formatDurationFull(m.factProcessingMs)}</span>
+          </div>`;
+      }
+
+      detailRowHtml = `
+      <tr class="detail-row">
+        <td colspan="8">
+          <div class="detail-content" id="detail-${idx}">
+            ${detailHtml}
+          </div>
+        </td>
+      </tr>`;
+    }
+
+    html += `
+      <tr>
+        <td>${escapeHtml(cleanKontragent(r.kontragent)) || '—'}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${formatDateSplit(r.planTime)}</td>
+        <td>${formatDateSplit(r.factTime)}</td>
+        <td>${formatDateSplit(r.departTime)}</td>
+        <td>${escapeHtml(r.driver) || '—'}</td>
+        <td><div class="time-cell">${timeCell}</div></td>
+        <td>${arrowHtml}</td>
+      </tr>
+      ${detailRowHtml}`;
+  });
+
+  html += `</tbody></table></div>`;
+  tableContainer.innerHTML = html;
+}
+
+window.showComment = function(idx, text) {
+  showAlert(text, 'Комментарий');
+};
+</script>
+</body>
+</html>

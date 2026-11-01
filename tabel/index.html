@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Табель смен</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a;min-height:100vh}
+.container{max-width:960px;margin:0 auto}
+
+.header{
+  text-align:center;
+  margin-bottom:28px;
+  padding:24px 20px;
+  background:linear-gradient(135deg,#e85a1e,#ff6f32 50%,#ff8855);
+  border-radius:16px;
+  box-shadow:8px 12px 28px rgba(200,70,20,.35);
+  position:relative;
+}
+.header-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:56px;
+  height:56px;
+  border-radius:14px;
+  background:rgba(255,255,255,.15);
+  backdrop-filter:blur(4px);
+  margin-bottom:12px;
+  border:1px solid rgba(255,255,255,.2);
+  opacity:0;
+  transform:scale(.5);
+  transition:opacity .6s ease,transform .6s cubic-bezier(.34,1.56,.64,1);
+}
+.header-icon.visible{
+  opacity:1;
+  transform:scale(1)
+}
+.header-icon svg {
+  stroke: white;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  width: 32px;
+  height: 32px;
+}
+.header h1{
+  font-size:25px;
+  color:#fff;
+  font-weight:700;
+  margin:0
+}
+.header .sub{
+  font-size:15px;
+  color:rgba(255,255,255,.7);
+  margin-top:6px
+}
+
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(2deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+.header-icon.visible svg {
+  animation: float 3s ease-in-out infinite;
+}
+
+.back-btn{
+  position:fixed;
+  top:20px;
+  left:20px;
+  width:46px;
+  height:46px;
+  border-radius:12px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:7px 9px 20px rgba(30,30,60,.16);
+  transition:all .25s;
+  z-index:1000;
+  text-decoration:none;
+  border:none;
+  cursor:pointer
+}
+.back-btn:hover{
+  background:rgba(61,90,158,.08);
+  transform:translateY(-2px);
+  box-shadow:9px 12px 26px rgba(30,30,60,.22)
+}
+.back-btn svg{
+  width:24px;
+  height:24px;
+  fill:#3d5a9e
+}
+
+.info-banner{
+  background:#fff;
+  border-radius:14px;
+  padding:14px 18px;
+  margin-bottom:16px;
+  border-left:4px solid #ff6f32;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  box-shadow:4px 6px 12px rgba(30,30,60,.08)
+}
+.info-banner svg{
+  width:24px;
+  height:24px;
+  flex-shrink:0;
+  fill:#ff6f32
+}
+.info-banner p{
+  font-size:14px;
+  line-height:1.5;
+  color:#4a4a65;
+  margin:0
+}
+.info-banner strong{
+  color:#ff6f32
+}
+
+.card{
+  background:#f5f5fa;
+  border-radius:16px;
+  padding:28px;
+  margin-bottom:20px;
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:10px 14px 36px rgba(30,30,60,.18)
+}
+
+.status-container{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:12px 16px;
+  border-radius:12px;
+  background:rgba(44,110,73,.08);
+  margin-top:12px;
+  transition:all 0.2s ease;
+  cursor:pointer
+}
+.status-indicator{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:#2c6e49;
+  box-shadow:0 0 8px rgba(44,110,73,.6);
+  animation:pulse 2s infinite
+}
+.status-text{
+  font-size:14px;
+  font-weight:600;
+  color:#2c6e49
+}
+.status-container:hover{
+  background:rgba(44,110,73,.12)
+}
+.status-container.error{
+  background:rgba(180,40,40,.08)
+}
+.status-container.error .status-indicator{
+  background:#b42828;
+  box-shadow:0 0 8px rgba(180,40,40,.6)
+}
+.status-container.error .status-text{
+  color:#8b2c2c
+}
+
+.month-switcher{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  margin-bottom:20px;
+  padding:12px;
+  background:#f5f5fa;
+  border-radius:16px;
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:10px 14px 36px rgba(30,30,60,.18);
+  position:relative
+}
+.ms-arrow{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:none;
+  background:#fff;
+  box-shadow:3px 4px 12px rgba(30,30,60,.12);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all .2s;
+  flex-shrink:0
+}
+.ms-arrow svg{width:22px;height:22px;fill:#555570;transition:fill .2s}
+.ms-arrow:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:5px 7px 16px rgba(30,30,60,.18)
+}
+.ms-arrow:hover:not(:disabled) svg{fill:#e85a1e}
+.ms-arrow:active:not(:disabled){transform:translateY(0) scale(.94)}
+.ms-arrow:disabled{opacity:.35;cursor:default}
+.ms-label{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:11px 24px;
+  border:none;
+  border-radius:14px;
+  background:linear-gradient(135deg,#e85a1e,#ff6f32);
+  color:#fff;
+  font-size:17px;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:5px 7px 18px rgba(232,90,30,.35);
+  transition:all .25s;
+  font-family:inherit;
+  min-width:210px;
+  overflow:hidden
+}
+.ms-label:hover{
+  transform:translateY(-2px);
+  box-shadow:7px 10px 24px rgba(232,90,30,.45)
+}
+.ms-label svg{width:16px;height:16px;fill:#fff;opacity:.85;transition:transform .25s;flex-shrink:0}
+.ms-label.open svg{transform:rotate(180deg)}
+.ms-text{display:inline-block}
+.ms-popup{
+  position:absolute;
+  top:calc(100% + 10px);
+  left:50%;
+  transform:translateX(-50%) scale(.9);
+  opacity:0;
+  pointer-events:none;
+  background:#fff;
+  border-radius:14px;
+  box-shadow:8px 14px 36px rgba(30,30,60,.28);
+  padding:8px;
+  min-width:240px;
+  max-height:300px;
+  overflow-y:auto;
+  z-index:500;
+  transition:all .22s cubic-bezier(.34,1.56,.64,1)
+}
+.ms-popup.visible{
+  opacity:1;
+  transform:translateX(-50%) scale(1);
+  pointer-events:auto
+}
+.ms-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 14px;
+  border-radius:9px;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:600;
+  color:#555570;
+  transition:background .15s,color .15s;
+  border:none;
+  background:none;
+  width:100%;
+  font-family:inherit;
+  text-align:left
+}
+.ms-item:hover{background:rgba(232,90,30,.08);color:#e85a1e}
+.ms-item.active{background:rgba(232,90,30,.12);color:#e85a1e}
+.ms-item .dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#e85a1e;
+  opacity:0;
+  flex-shrink:0
+}
+.ms-item.active .dot{opacity:1}
+
+.ss{margin-top:0;display:none}
+.ss-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:18px
+}
+.print-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 18px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(135deg,#e85a1e,#ff6f32);
+  color:#fff;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:4px 6px 16px rgba(232,90,30,.3);
+  transition:all .25s;
+  font-family:inherit
+}
+.print-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:6px 9px 22px rgba(232,90,30,.45)
+}
+.print-btn svg{width:18px;height:18px;fill:#fff}
+
+.sw{position:relative}
+.sw label{
+  display:block;
+  font-size:14px;
+  font-weight:600;
+  margin-bottom:6px;
+  color:#555570;
+  text-transform:uppercase;
+  display:none
+}
+.si{
+  width:100%;
+  padding:12px 18px 12px 42px;
+  border:1.5px solid rgba(0,0,0,.1);
+  border-radius:12px;
+  font-size:16px;
+  background:#fff
+}
+.si:focus{
+  outline:none;
+  border-color:#3d5a9e
+}
+.sw-ic{
+  position:absolute;
+  left:12px;
+  bottom:12px;
+  width:20px;
+  height:20px;
+  fill:#888;
+  pointer-events:none
+}
+.acl{
+  position:absolute;
+  top:100%;
+  left:0;
+  right:0;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:10px;
+  margin-top:4px;
+  max-height:240px;
+  overflow-y:auto;
+  box-shadow:6px 8px 20px rgba(30,30,60,.15);
+  z-index:100;
+  display:none
+}
+.acl.visible{display:block}
+.aci{
+  padding:12px 18px;
+  cursor:pointer;
+  font-size:15px;
+  border-bottom:1px solid rgba(0,0,0,.04)
+}
+.aci:hover,.aci.hl{
+  background:rgba(61,90,158,.08);
+  color:#3d5a9e
+}
+.aci mark{
+  background:rgba(61,90,158,.15);
+  color:#3d5a9e
+}
+.ec{
+  display:none;
+  margin-top:20px;
+  padding:20px;
+  background:linear-gradient(135deg,#fff,#f8f9ff);
+  border-radius:14px;
+  border:1.5px solid rgba(61,90,158,.12)
+}
+.ec.visible{display:block}
+.en{
+  font-size:20px;
+  font-weight:700;
+  color:#3d5a9e;
+  margin-bottom:4px
+}
+.ep{
+  font-size:14px;
+  color:#888;
+  font-weight:500
+}
+.sts{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px;
+  margin-top:16px
+}
+.st{
+  background:#fff;
+  border-radius:12px;
+  padding:16px;
+  text-align:center
+}
+.sv{
+  font-size:28px;
+  font-weight:800;
+  line-height:1
+}
+.sv.d{color:#e85a1e}
+.sv.n{color:#5a5a7a}
+.sv.w{color:#3d5a9e}
+.sv.t{color:#2c6e49}
+.sl{
+  font-size:11px;
+  font-weight:600;
+  color:#888;
+  text-transform:uppercase;
+  margin-top:6px
+}
+.cs{display:none;margin-top:20px}.cs.visible{display:block}
+.ch{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:14px;
+  flex-wrap:wrap;
+  gap:10px
+}
+.cl{
+  display:flex;
+  gap:14px;
+  font-size:12px;
+  color:#666
+}
+.li{
+  display:flex;
+  align-items:center;
+  gap:5px
+}
+.ld{
+  width:14px;
+  height:14px;
+  border-radius:4px
+}
+.ld.d{background:#e85a1e}
+.ld.n{background:#6a6a8a}
+.ld.m{background:linear-gradient(135deg,#e85a1e 50%,#6a6a8a 50%)}
+.ld.s{background:linear-gradient(135deg,#ffd700,#ffaa00)}
+.cw{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+  margin-bottom:4px
+}
+.wd{
+  text-align:center;
+  font-size:11px;
+  font-weight:700;
+  color:#888;
+  text-transform:uppercase;
+  padding:6px 0
+}
+.cg{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px
+}
+.cd{
+  aspect-ratio:1;
+  border-radius:10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  transition:transform .15s;
+}
+.cd:hover:not(.empty){
+  transform:scale(1.08);
+  z-index:2;
+  box-shadow:4px 6px 16px rgba(30,30,60,.15);
+  cursor:pointer;
+}
+.cd.empty{
+  background:transparent;
+  border:none
+}
+.cd.ds{
+  background:#e85a1e;
+  color:#fff
+}
+.cd.ds-light{
+  background:#ff8855;
+  color:#fff
+}
+.cd.ns{
+  background:#6a6a8a;
+  color:#fff
+}
+.cd.ms{color:#fff}
+.cd.ms::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#e85a1e 50%,#6a6a8a 50%);
+  z-index:0
+}
+.cd.ms>*{position:relative;z-index:1}
+.cd.sut{
+  background:linear-gradient(135deg,#ffd700,#ffaa00);
+  color:#3a2800;
+  border-color:#e6a800;
+  box-shadow:0 0 18px rgba(255,215,0,.8),0 0 36px rgba(255,170,0,.5);
+  animation:glow 2s ease-in-out infinite alternate
+}
+.cn{
+  font-size:11px;
+  font-weight:700;
+  line-height:1.1;
+  text-align:center
+}
+.cm{
+  font-size:8px;
+  font-weight:600;
+  opacity:.7;
+  text-transform:lowercase
+}
+.chr{
+  font-size:14px;
+  font-weight:800;
+  margin-top:2px;
+  line-height:1
+}
+.cd.empty .cn{
+  color:#ccc;
+  font-weight:400;
+  font-size:13px
+}
+.cd .tip{
+  display:none;
+  position:absolute;
+  bottom:calc(100% + 8px);
+  left:50%;
+  transform:translateX(-50%);
+  background:#2a2a3a;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:8px;
+  font-size:12px;
+  white-space:nowrap;
+  z-index:10;
+  text-align:center
+}
+.cd .tip::after{
+  content:'';
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  border:5px solid transparent;
+  border-top-color:#2a2a3a
+}
+.cd:hover .tip{display:block}
+
+@keyframes pulseView {
+  0% { box-shadow: 0 0 0 0 rgba(232, 90, 30, 0.6); z-index: 5; transform: scale(1.08); }
+  100% { box-shadow: 0 0 0 16px rgba(232, 90, 30, 0); z-index: 5; transform: scale(1); }
+}
+.cd.pulse-view { animation: pulseView 1.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(30,30,60,0.5); backdrop-filter: blur(4px);
+  z-index: 2000; display: none; align-items: center; justify-content: center;
+}
+.modal {
+  background: #fff; border-radius: 20px; width: 90%; max-width: 360px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-header { 
+  display: flex; justify-content: space-between; align-items: center; 
+  padding: 20px 24px; transition: background 0.3s, color 0.3s;
+}
+.mh-sut { background: linear-gradient(135deg,#ffd700,#ffaa00); color: #3a2800; }
+.mh-ds { background: #e85a1e; color: #fff; }
+.mh-ds-light { background: #ff8855; color: #fff; }
+.mh-ns { background: #6a6a8a; color: #fff; }
+.mh-ms { background: linear-gradient(135deg,#e85a1e 50%,#6a6a8a 50%); color: #fff; }
+
+.modal-title { font-size: 18px; font-weight: 700; color: inherit; }
+.modal-close { 
+  background: rgba(255,255,255,0.2); border: none; cursor: pointer; border-radius: 8px; 
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; 
+  transition: background 0.2s; color: inherit;
+}
+.modal-close:hover { background: rgba(255,255,255,0.3); }
+.modal-close svg { width: 16px; height: 16px; fill: currentColor; }
+.modal-body { padding: 0 24px 24px; font-size: 15px; color: #4a4a65; }
+.modal-stat { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.modal-stat:last-child { border-bottom: none; }
+.modal-stat-label { color: #666; font-weight:500; }
+.modal-stat-val { font-weight: 700; color: #2a2a3a; }
+.modal-stat.total { background: #f5f5fa; margin: 8px -24px -24px -24px; padding: 16px 24px; border-radius: 0 0 20px 20px; border:none; }
+
+.wh-overlay{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:rgba(30,30,60,.5);
+  backdrop-filter:blur(4px);
+  z-index:2500;
+  display:none;
+  align-items:center;
+  justify-content:center
+}
+.wh-overlay.visible{display:flex}
+.wh-modal{
+  background:#fff;
+  border-radius:20px;
+  padding:26px;
+  width:90%;
+  max-width:390px;
+  box-shadow:0 24px 60px rgba(0,0,0,.35);
+  animation:whIn .32s cubic-bezier(.34,1.56,.64,1)
+}
+@keyframes whIn{
+  from{opacity:0;transform:scale(.85) translateY(14px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+.wh-title{
+  font-size:19px;
+  font-weight:800;
+  color:#2a2a3a;
+  text-align:center
+}
+.wh-sub{
+  font-size:13px;
+  color:#999;
+  text-align:center;
+  margin:5px 0 18px;
+  font-weight:600
+}
+.wh-opt{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  width:100%;
+  padding:14px 16px;
+  border-radius:14px;
+  border:1.5px solid rgba(0,0,0,.1);
+  background:#fff;
+  cursor:pointer;
+  margin-bottom:10px;
+  transition:all .2s;
+  text-align:left;
+  font-family:inherit
+}
+.wh-opt:hover:not(:disabled){
+  border-color:#e85a1e;
+  box-shadow:4px 6px 16px rgba(232,90,30,.18);
+  transform:translateY(-2px)
+}
+.wh-opt:disabled{opacity:.45;cursor:default}
+.wh-num{
+  width:46px;
+  height:46px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#e85a1e,#ff6f32);
+  color:#fff;
+  font-size:19px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0
+}
+.wh-name{font-size:15px;font-weight:700;color:#2a2a3a}
+.wh-count{font-size:12px;color:#999;margin-top:3px;font-weight:600}
+.wh-cancel{
+  width:100%;
+  padding:11px;
+  border:none;
+  border-radius:12px;
+  background:#f0f0f5;
+  color:#666;
+  font-weight:700;
+  cursor:pointer;
+  font-family:inherit;
+  font-size:14px;
+  transition:background .2s;
+  margin-top:4px
+}
+.wh-cancel:hover{background:#e4e4ec}
+
+.print-overlay{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:rgba(30,30,60,.6);
+  backdrop-filter:blur(5px);
+  z-index:3000;
+  display:none;
+  overflow-y:auto;
+  padding:40px 20px
+}
+.print-overlay.visible{display:block}
+.print-toolbar{
+  max-width:920px;
+  margin:0 auto 16px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap
+}
+.pt-spacer{flex:1}
+.pt-btn{
+  padding:11px 20px;
+  border-radius:12px;
+  border:none;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .2s;
+  font-family:inherit
+}
+.pt-btn.primary{
+  background:linear-gradient(135deg,#e85a1e,#ff6f32);
+  color:#fff;
+  box-shadow:4px 6px 16px rgba(232,90,30,.4)
+}
+.pt-btn.primary:hover{transform:translateY(-2px)}
+.pt-btn.ghost{
+  background:#fff;
+  color:#4a4a65;
+  box-shadow:4px 6px 16px rgba(30,30,60,.25)
+}
+.pt-btn.ghost:hover{transform:translateY(-2px)}
+.pt-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:700;
+  color:#fff;
+  user-select:none;
+  padding:4px 2px
+}
+.pt-toggle input{display:none}
+.pt-toggle-track{
+  width:40px;
+  height:22px;
+  border-radius:11px;
+  background:rgba(255,255,255,.25);
+  position:relative;
+  transition:background .2s;
+  flex-shrink:0
+}
+.pt-toggle-thumb{
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:#fff;
+  transition:left .2s;
+  box-shadow:0 1px 4px rgba(0,0,0,.3)
+}
+.pt-toggle input:checked+.pt-toggle-track{background:#ff8855}
+.pt-toggle input:checked+.pt-toggle-track .pt-toggle-thumb{left:21px}
+.print-sheet{
+  max-width:920px;
+  margin:0 auto;
+  background:#fff;
+  border-radius:16px;
+  padding:44px;
+  box-shadow:0 24px 70px rgba(0,0,0,.4)
+}
+.report-head{
+  display:flex;
+  align-items:center;
+  gap:32px;
+  margin-bottom:26px;
+  padding-bottom:20px;
+  border-bottom:3px solid #e85a1e;
+  flex-wrap:wrap
+}
+.report-logo{
+  width:230px;
+  height:auto;
+  flex-shrink:0
+}
+.report-title{
+  font-size:23px;
+  font-weight:800;
+  color:#2a2a3a
+}
+.report-period{
+  font-size:16px;
+  color:#e85a1e;
+  font-weight:700;
+  margin-top:5px
+}
+.report-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+  line-height:1.3
+}
+.report-table th{
+  background:#e85a1e;
+  color:#fff;
+  padding:10px 12px;
+  text-align:left;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  border:1px solid #d94f16;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact
+}
+.report-table td{
+  padding:8px 12px;
+  border:1px solid #d8d8e0;
+  color:#2a2a3a
+}
+.report-table tbody tr:nth-child(even){
+  background:#f7f7fb;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact
+}
+.report-table tbody tr{page-break-inside:avoid}
+.report-table .tac{text-align:center}
+.report-table tfoot td{
+  font-weight:800;
+  background:#fff4ee;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact
+}
+.report-table.cmp-m{font-size:11.5px}
+.report-table.cmp-m th{padding:7px 10px;font-size:10px}
+.report-table.cmp-m td{padding:5px 10px}
+.report-table.cmp-s{font-size:10px}
+.report-table.cmp-s th{padding:5px 8px;font-size:9px}
+.report-table.cmp-s td{padding:3px 8px}
+.report-table.cmp-xs{font-size:9px}
+.report-table.cmp-xs th{padding:4px 7px;font-size:8.5px}
+.report-table.cmp-xs td{padding:2px 7px}
+.report-table.cmp-xx{font-size:7.5px;line-height:1.15}
+.report-table.cmp-xx th{padding:3px 6px;font-size:7px;letter-spacing:.2px}
+.report-table.cmp-xx td{padding:1.5px 6px}
+.report-table.cmp-xxx{font-size:6.5px;line-height:1.1}
+.report-table.cmp-xxx th{padding:2px 5px;font-size:6px;letter-spacing:.1px}
+.report-table.cmp-xxx td{padding:1px 5px}
+.report-table .empty-msg{
+  text-align:center;
+  color:#999;
+  padding:24px 12px!important;
+  font-size:13px
+}
+.row-del{
+  width:24px;
+  height:24px;
+  border:none;
+  border-radius:7px;
+  background:rgba(180,40,40,.08);
+  color:#b42828;
+  cursor:pointer;
+  font-size:12px;
+  line-height:1;
+  transition:all .15s;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  opacity:.45;
+  font-family:inherit
+}
+.report-table tbody tr:hover .row-del{opacity:1}
+.row-del:hover{
+  background:#b42828;
+  color:#fff;
+  transform:scale(1.12)
+}
+.excluded-sec{
+  margin-top:20px;
+  border-top:1.5px dashed #d0d0da;
+  padding-top:14px
+}
+.excluded-sec.hidden{display:none}
+.excluded-title{
+  font-size:11px;
+  font-weight:700;
+  color:#999;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  margin-bottom:10px
+}
+.excluded-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px
+}
+.excluded-item{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#f5f5fa;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:10px;
+  padding:6px 8px 6px 12px;
+  font-size:13px;
+  color:#666
+}
+.excluded-name{font-weight:600}
+.row-restore{
+  border:none;
+  background:#fff;
+  border-radius:7px;
+  padding:4px 9px;
+  font-size:11px;
+  font-weight:700;
+  color:#2c6e49;
+  cursor:pointer;
+  transition:all .15s;
+  font-family:inherit;
+  box-shadow:0 1px 3px rgba(0,0,0,.08)
+}
+.row-restore:hover{
+  background:#2c6e49;
+  color:#fff
+}
+.report-foot{
+  margin-top:16px;
+  font-size:11px;
+  color:#999;
+  text-align:right
+}
+
+.err{
+  padding:14px 18px;
+  background:rgba(180,40,40,.08);
+  border:1px solid rgba(180,40,40,.15);
+  border-radius:10px;
+  color:#8b2c2c;
+  font-size:14px;
+  margin-top:14px;
+  display:none;
+  white-space:pre-wrap
+}
+.err.visible{display:block}
+
+@keyframes pulse{
+  0%{opacity:1}
+  50%{opacity:0.6}
+  100%{opacity:1}
+}
+@keyframes glow{
+  from{box-shadow:0 0 8px rgba(255,215,0,.4),0 0 16px rgba(255,170,0,.2)}
+  to{box-shadow:0 0 18px rgba(255,215,0,.8),0 0 36px rgba(255,170,0,.5)}
+}
+
+@media(max-width:600px){
+  .sts{grid-template-columns:repeat(2,1fr)}
+  .cg{gap:2px}
+  .chr{font-size:11px}
+  .cn{font-size:9px}
+  .cm{font-size:7px}
+  .back-btn{
+    top:15px;
+    left:15px;
+    width:40px;
+    height:40px
+  }
+  .print-overlay{padding:20px 10px}
+  .print-sheet{padding:24px 18px}
+  .report-logo{width:160px}
+  .report-title{font-size:19px}
+  .ms-label{min-width:0;font-size:15px;padding:10px 16px}
+  .ms-popup{min-width:200px}
+}
+
+@media print{
+  @page{size:A4;margin:8mm}
+  body{background:#fff!important;padding:0!important}
+  body>*:not(.print-overlay){display:none!important}
+  .print-overlay{
+    position:static!important;
+    display:block!important;
+    background:none!important;
+    padding:0!important;
+    overflow:visible!important
+  }
+  .print-toolbar{display:none!important}
+  .no-print{display:none!important}
+  .print-sheet{
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+    box-shadow:none!important;
+    border-radius:0!important
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="http://okkam.space" class="back-btn" title="Назад">
+    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+  </a>
+  
+  <div class="header">
+    <div class="header-icon" id="headerIcon">
+      <svg viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    </div>
+    <h1>Табель смен</h1>
+    <div class="sub">Kiberbul'ka — просмотр графика работы</div>
+  </div>
+  
+  <div class="info-banner">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+    <p>Табель <strong>обновляется вручную</strong> (у IT не реализована автоматическая выгрузка табеля), поэтому <strong>шевелите меня</strong> для актуализации информации.</p>
+  </div>
+
+  <div class="card">
+    <div id="loadStatus" class="status-container">
+      <div class="status-indicator"></div>
+      <div class="status-text">Загрузка табеля...</div>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="month-switcher" id="monthSwitcher" style="display:none">
+    <button class="ms-arrow" id="msPrev" title="Предыдущий месяц">
+      <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    </button>
+    <button class="ms-label" id="msLabel" title="Выбрать месяц">
+      <span class="ms-text" id="msText"></span>
+      <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+    </button>
+    <button class="ms-arrow" id="msNext" title="Следующий месяц">
+      <svg viewBox="0 0 24 24"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+    </button>
+    <div class="ms-popup" id="msPopup"></div>
+  </div>
+
+  <div class="card ss" id="ss" style="display:none">
+    <div class="ss-head">
+      <h2>🔍 Поиск сотрудника</h2>
+      <button class="print-btn" id="printBtn" title="Распечатать сводный табель по складу">
+        <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+        Печать табеля
+      </button>
+    </div>
+    <div class="sw">
+      <label>Фамилия</label>
+      <svg class="sw-ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input type="text" class="si" id="sinp" placeholder="Начните вводить фамилию..." autocomplete="off">
+      <div class="acl" id="acl"></div>
+    </div>
+    <div class="ec" id="ec">
+      <div class="en" id="enm"></div>
+      <div class="ep" id="eps"></div>
+      <div class="sts" id="sts"></div>
+    </div>
+    <div class="cs" id="cs">
+      <div class="ch">
+        <div style="font-size:16px;font-weight:700;color:#4a4a65" id="ctitle"></div>
+        <div class="cl">
+          <div class="li"><div class="ld d"></div>День</div>
+          <div class="li"><div class="ld n"></div>Ночь</div>
+          <div class="li"><div class="ld m"></div>Смешанная</div>
+          <div class="li"><div class="ld s"></div>Сутки</div>
+        </div>
+      </div>
+      <div class="cw" id="cwk"></div>
+      <div class="cg" id="cgr"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <div class="modal-header" id="modalHeader">
+      <div class="modal-title" id="modalTitle">Детали смены</div>
+      <button class="modal-close" id="modalClose">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="wh-overlay" id="whOverlay">
+  <div class="wh-modal">
+    <div class="wh-title">Печать табеля</div>
+    <div class="wh-sub" id="whSub"></div>
+    <button class="wh-opt" id="whOpt11">
+      <div class="wh-num">11</div>
+      <div>
+        <div class="wh-name">Склад 11 (Залесье)</div>
+        <div class="wh-count" id="whCount11"></div>
+      </div>
+    </button>
+    <button class="wh-opt" id="whOpt12">
+      <div class="wh-num">12</div>
+      <div>
+        <div class="wh-name">Склад 12 (Залесье_2)</div>
+        <div class="wh-count" id="whCount12"></div>
+      </div>
+    </button>
+    <button class="wh-cancel" id="whCancel">Отмена</button>
+  </div>
+</div>
+
+<div class="print-overlay" id="printOverlay">
+  <div class="print-toolbar">
+    <label class="pt-toggle" title="Показать строку итогов">
+      <input type="checkbox" id="totalsToggle">
+      <span class="pt-toggle-track"><span class="pt-toggle-thumb"></span></span>
+      <span>Итоги</span>
+    </label>
+    <div class="pt-spacer"></div>
+    <button class="pt-btn primary" id="printNowBtn">🖨 Печать</button>
+    <button class="pt-btn ghost" id="printCloseBtn">✕ Закрыть</button>
+  </div>
+  <div class="print-sheet" id="printSheet"></div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+document.onkeydown = function(e) {
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && e.key === 'U')) {
+    e.preventDefault(); return false;
+  }
+};
+
+var G = {emps:{}, currentEmp: null, month:0, year:2024, days:0, wb:null, monthSheets:[], activeSheetIndex:-1};
+var MONTHS=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+var MONTHS3=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+var MONTHS_GEN=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+var WDAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+var WH_LABELS={11:'Склад 11',12:'Склад 12'};
+var LAY_EN="qwertyuiop[]asdfghjkl;'zxcvbnm,.`";
+var LAY_RU='йцукенгшщзхъфывапролджэячсмитьбюё';
+var previewState={wh:0,excluded:{},showTotals:false};
+
+let fileLastModified = null;
+let isShowingDate = false;
+let activeCell = null;
+
+new Image().src='logo.png';
+
+function $(id){return document.getElementById(id)}
+function showErr(m){$('err').textContent=m;$('err').classList.add('visible')}
+function hideErr(){$('err').classList.remove('visible');$('err').textContent=''}
+function setStatusError(t){
+  $('loadStatus').className='status-container error';
+  $('loadStatus').querySelector('.status-text').textContent=t;
+}
+
+function parseNum(v){
+  if(v===null||v===undefined||v==='')return 0;
+  var s=String(v).replace(',','.').trim();
+  var n=parseFloat(s);
+  return isNaN(n)?0:n;
+}
+
+function swapLayout(str,from,to){
+  var res='';
+  for(var i=0;i<str.length;i++){
+    var idx=from.indexOf(str[i]);
+    res+=idx!==-1?to[idx]:str[i];
+  }
+  return res;
+}
+function latToRus(s){return swapLayout(s,LAY_EN,LAY_RU);}
+function rusToLat(s){return swapLayout(s,LAY_RU,LAY_EN);}
+function searchVariants(ql){
+  var v=[ql];
+  var a=latToRus(ql);
+  var b=rusToLat(ql);
+  if(a!==ql)v.push(a);
+  if(b!==ql&&b!==a)v.push(b);
+  return v;
+}
+
+function formatHours(h){
+  if(h === null || h === undefined || h === '') return '0';
+  var n = parseFloat(h);
+  if(isNaN(n) || n === 0) return '0';
+  var totalMinutes = Math.round(n * 60);
+  var hours = Math.floor(totalMinutes / 60);
+  var minutes = totalMinutes % 60;
+  if(minutes === 0) return String(hours);
+  return hours + ':' + (minutes < 10 ? '0' : '') + minutes;
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getWarehouse(val){
+  var s=String(val||'').toLowerCase();
+  if(s.indexOf('склад 12')!==-1)return 12;
+  if(s.indexOf('склад 11')!==-1)return 11;
+  return 0;
+}
+
+function pluralPeople(n){
+  var m=Math.abs(n)%100;
+  var n1=m%10;
+  if(m>10&&m<20)return'сотрудников';
+  if(n1>1&&n1<5)return'сотрудника';
+  if(n1===1)return'сотрудник';
+  return'сотрудников';
+}
+
+function parseMonthInfo(val){
+  if(!val)return null;
+  var s=String(val).toLowerCase().trim();
+  for(var i=0;i<MONTHS.length;i++){
+    if(s.indexOf(MONTHS[i])!==-1){
+      var yMatch=s.match(/20\d{2}/);
+      var y=yMatch?parseInt(yMatch[0]):new Date().getFullYear();
+      return{month:i,year:y};
+    }
+  }
+  return null;
+}
+
+function parseSheetName(name){
+  var m=String(name).trim().match(/^(\d{1,2})[.\/\-](\d{4})$/);
+  if(!m)return null;
+  var month=parseInt(m[1],10)-1;
+  var year=parseInt(m[2],10);
+  if(month<0||month>11||year<2000||year>2100)return null;
+  return{month:month,year:year};
+}
+
+function countShifts(dd){
+  if(dd.d>=15&&dd.n>=7)return 2;
+  if(dd.d>0||dd.n>0)return 1;
+  return 0;
+}
+
+function parseSheetRows(sheet,forcedMonthInfo){
+  var rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
+  if(!rows||rows.length<10){showErr('Слишком мало строк в файле');return null;}
+
+  var monthInfo=forcedMonthInfo||null;
+  if(!monthInfo){
+    if(rows[3]&&rows[3][7])monthInfo=parseMonthInfo(rows[3][7]);
+    if(!monthInfo){
+      for(var r=0;r<Math.min(15,rows.length);r++){
+        if(!rows[r])continue;
+        for(var c=0;c<rows[r].length;c++){
+          if(rows[r][c]&&String(rows[r][c]).length>2){
+            var mi=parseMonthInfo(rows[r][c]);
+            if(mi){monthInfo=mi;break;}
+          }
+        }
+        if(monthInfo)break;
+      }
+    }
+  }
+  if(!monthInfo){showErr('Не найден месяц в файле.');return null;}
+
+  var maxCols=0;
+  for(var r=0;r<rows.length;r++)if(rows[r]&&rows[r].length>maxCols)maxCols=rows[r].length;
+
+  var dayStartCol=19;
+  var colWidth=5;
+  var daysRowIndex=8;
+
+  for(var r=5;r<=12;r++){
+    if(!rows[r])continue;
+    var oneIdx=-1,twoIdx=-1;
+    for(var c=15;c<45;c++){
+      if(String(rows[r][c]).trim()==='1')oneIdx=c;
+      if(String(rows[r][c]).trim()==='2'&&oneIdx!==-1){twoIdx=c;break;}
+    }
+    if(oneIdx!==-1&&twoIdx!==-1&&(twoIdx-oneIdx)>=2){
+      daysRowIndex=r;
+      dayStartCol=oneIdx;
+      colWidth=twoIdx-oneIdx;
+      break;
+    }
+  }
+
+  var daysCount=0;
+  for(var c=dayStartCol;c<maxCols;c+=colWidth){
+    var dayVal=parseInt(String(rows[daysRowIndex][c]).trim());
+    if(dayVal===daysCount+1){
+      daysCount++;
+    }else{
+      break;
+    }
+  }
+  if(daysCount===0)daysCount=new Date(monthInfo.year,monthInfo.month+1,0).getDate();
+
+  var emps={};
+  for(var r=0;r<rows.length;r++){
+    var row=rows[r];
+    if(!row||row.length<dayStartCol)continue;
+    var name=String(row[2]||'').trim();
+    if(!name||name.length<2||/^[а-яА-ЯёЁa-zA-Z\s\-\.]+$/.test(name)===false)continue;
+
+    var whRaw=String(row[11]||'').trim();
+    var key=name.toLowerCase();
+    if(!emps[key]){
+      emps[key]={
+        name:name,
+        position:String(row[13]||row[14]||'').trim(),
+        warehouse:getWarehouse(whRaw),
+        warehouseRaw:whRaw,
+        days:{}
+      };
+    }else if(!emps[key].warehouse&&whRaw){
+      emps[key].warehouse=getWarehouse(whRaw);
+      emps[key].warehouseRaw=whRaw;
+    }
+    var emp=emps[key];
+
+    for(var d=0;d<daysCount;d++){
+      var col=dayStartCol+d*colWidth;
+      if(col>=row.length)continue;
+
+      var dayH=0,nightH=0;
+      var details={dayFact:0,dayTime:'',nightNoCoeff:0,nightCoeff:0,nightTime:''};
+
+      if(colWidth>=5){
+        details.dayFact=parseNum(row[col]);
+        details.dayTime=String(row[col+1]||'').trim();
+        details.nightNoCoeff=parseNum(row[col+2]);
+        details.nightCoeff=parseNum(row[col+3]);
+        details.nightTime=String(row[col+4]||'').trim();
+
+        dayH=details.dayFact;
+        nightH=details.nightNoCoeff+details.nightCoeff;
+      }else{
+        dayH=parseNum(row[col]);
+        nightH=parseNum(row[col+1])+parseNum(row[col+2]);
+      }
+
+      if(dayH<=0&&nightH<=0)continue;
+      emp.days[d+1]={d:dayH,n:nightH,details:details};
+    }
+  }
+
+  return{month:monthInfo.month,year:monthInfo.year,days:daysCount,emps:emps};
+}
+
+function processWB(wb,file){
+  hideErr();
+  G.wb=wb;
+  var monthSheets=[];
+  for(var i=0;i<wb.SheetNames.length;i++){
+    var info=parseSheetName(wb.SheetNames[i]);
+    if(info)monthSheets.push({name:wb.SheetNames[i],month:info.month,year:info.year});
+  }
+  if(monthSheets.length>0){
+    monthSheets.sort(function(a,b){return(a.year-b.year)||(a.month-b.month);});
+    G.monthSheets=monthSheets;
+    renderMonthSwitcher();
+    selectMonthSheet(monthSheets.length-1,true,file,0);
+  }else{
+    G.monthSheets=[];
+    G.activeSheetIndex=-1;
+    $('monthSwitcher').style.display='none';
+    var sheet=wb.Sheets[wb.SheetNames[0]];
+    if(!sheet){showErr('Лист пуст');setStatusError('Ошибка обработки файла');return;}
+    var res=parseSheetRows(sheet,null);
+    if(!res){setStatusError('Ошибка обработки файла');return;}
+    applyParsed(res,file);
+  }
+}
+
+function applyParsed(res,file){
+  if(Object.keys(res.emps).length===0){showErr('Сотрудники не найдены.');setStatusError('Ошибка обработки файла');return;}
+  G.month=res.month;
+  G.year=res.year;
+  G.days=res.days;
+  G.emps=res.emps;
+  afterLoadSuccess(file);
+}
+
+function afterLoadSuccess(file){
+  $('ss').style.display='block';
+  $('loadStatus').classList.remove('error');
+  $('loadStatus').querySelector('.status-text').textContent='Табель загружен ✓';
+  if(file&&file.lastModified){
+    var d=new Date(file.lastModified);
+    if(!isNaN(d.getTime())){
+      fileLastModified=d.toLocaleString('ru-RU',{
+        day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
+      });
+    }
+  }
+  setTimeout(function(){$('headerIcon').classList.add('visible');},500);
+}
+
+function monthLabel(s){
+  return MONTHS[s.month].charAt(0).toUpperCase()+MONTHS[s.month].slice(1)+' '+s.year;
+}
+
+function renderMonthSwitcher(){
+  var html='';
+  for(var i=0;i<G.monthSheets.length;i++){
+    html+='<button type="button" class="ms-item" data-idx="'+i+'"><span>'+monthLabel(G.monthSheets[i])+'</span><span class="dot"></span></button>';
+  }
+  $('msPopup').innerHTML=html;
+  var items=$('msPopup').querySelectorAll('.ms-item');
+  for(var i=0;i<items.length;i++){
+    items[i].addEventListener('click',function(){
+      var idx=parseInt(this.getAttribute('data-idx'));
+      if(idx===G.activeSheetIndex){closeMsPopup();return;}
+      var dir=idx>G.activeSheetIndex?1:-1;
+      closeMsPopup();
+      selectMonthSheet(idx,false,null,dir);
+    });
+  }
+  $('monthSwitcher').style.display='flex';
+}
+
+function updateMonthSwitcher(dir){
+  if(G.activeSheetIndex<0||!G.monthSheets.length)return;
+  $('msPrev').disabled=G.activeSheetIndex<=0;
+  $('msNext').disabled=G.activeSheetIndex>=G.monthSheets.length-1;
+  var items=$('msPopup').querySelectorAll('.ms-item');
+  for(var i=0;i<items.length;i++){
+    if(parseInt(items[i].getAttribute('data-idx'))===G.activeSheetIndex)items[i].classList.add('active');
+    else items[i].classList.remove('active');
+  }
+  var label=monthLabel(G.monthSheets[G.activeSheetIndex]);
+  var el=$('msText');
+  if(!dir){el.textContent=label;return;}
+  var outY=dir>0?'-14px':'14px';
+  var inY=dir>0?'14px':'-14px';
+  var a=el.animate([
+    {opacity:1,transform:'translateY(0)'},
+    {opacity:0,transform:'translateY('+outY+')'}
+  ],{duration:140,easing:'ease-in'});
+  a.onfinish=function(){
+    el.textContent=label;
+    el.animate([
+      {opacity:0,transform:'translateY('+inY+')'},
+      {opacity:1,transform:'translateY(0)'}
+    ],{duration:190,easing:'ease-out'});
+  };
+}
+
+function closeMsPopup(){
+  $('msPopup').classList.remove('visible');
+  $('msLabel').classList.remove('open');
+}
+
+$('msLabel').addEventListener('click',function(e){
+  e.stopPropagation();
+  var vis=$('msPopup').classList.toggle('visible');
+  this.classList.toggle('open',vis);
+});
+$('msPrev').addEventListener('click',function(){
+  if(G.activeSheetIndex>0)selectMonthSheet(G.activeSheetIndex-1,false,null,-1);
+});
+$('msNext').addEventListener('click',function(){
+  if(G.activeSheetIndex<G.monthSheets.length-1)selectMonthSheet(G.activeSheetIndex+1,false,null,1);
+});
+document.addEventListener('click',function(e){
+  if(!$('msPopup').contains(e.target)&&!$('msLabel').contains(e.target)){
+    closeMsPopup();
+  }
+});
+
+function selectMonthSheet(idx,isFirst,file,dir){
+  if(!G.wb||!G.monthSheets[idx])return;
+  var info=G.monthSheets[idx];
+  var sheet=G.wb.Sheets[info.name];
+  if(!sheet){showErr('Лист "'+info.name+'" пуст');setStatusError('Ошибка чтения листа');return;}
+  hideErr();
+  var res=parseSheetRows(sheet,{month:info.month,year:info.year});
+  if(!res){setStatusError('Ошибка обработки листа "'+info.name+'"');return;}
+  if(Object.keys(res.emps).length===0){showErr('Сотрудники не найдены на листе "'+info.name+'".');setStatusError('Ошибка обработки листа');return;}
+  G.activeSheetIndex=idx;
+  G.month=res.month;
+  G.year=res.year;
+  G.days=res.days;
+  G.emps=res.emps;
+  isShowingDate=false;
+  $('loadStatus').classList.remove('error');
+  $('loadStatus').querySelector('.status-text').textContent='Табель загружен ✓';
+  updateMonthSwitcher(dir||0);
+  if(isFirst){
+    afterLoadSuccess(file);
+  }else{
+    $('sinp').value='';
+    $('acl').classList.remove('visible');
+    if(G.currentEmp){
+      var key=G.currentEmp.name.toLowerCase();
+      if(G.emps[key])renderEmp(G.emps[key]);
+      else clearEmpView();
+    }
+  }
+}
+
+function clearEmpView(){
+  G.currentEmp=null;
+  $('ec').classList.remove('visible');
+  $('cs').classList.remove('visible');
+  $('sinp').value='';
+  $('acl').classList.remove('visible');
+}
+
+function getShiftType(d,n){
+  if(d>=15&&n>=7)return 'sut';
+  if(d>0&&n>0){
+    if(d<=4)return 'ns';
+    return 'ms';
+  }
+  if(d>0&&n===0){
+    if(d == 11) return 'ds';
+    return 'ds-light';
+  }
+  if(d===0&&n>0)return 'ns';
+  return '';
+}
+
+function renderEmp(emp){
+  G.currentEmp = emp;
+  $('enm').textContent=emp.name;
+  $('eps').textContent=emp.position||'';
+  var totalD=0, totalN=0, workdays=0;
+  var keys=Object.keys(emp.days);
+  for(var i=0;i<keys.length;i++){
+    var dd=emp.days[keys[i]];
+    totalD+=dd.d; totalN+=dd.n;
+    workdays+=countShifts(dd);
+  }
+  var html='';
+  html+='<div class="st"><div class="sv d">'+formatHours(totalD)+'ч</div><div class="sl">Дневные</div></div>';
+  html+='<div class="st"><div class="sv n">'+formatHours(totalN)+'ч</div><div class="sl">Ночные</div></div>';
+  html+='<div class="st"><div class="sv t">'+formatHours(totalD+totalN)+'ч</div><div class="sl">Всего</div></div>';
+  html+='<div class="st"><div class="sv w">'+workdays+'</div><div class="sl">Смен</div></div>';
+  $('sts').innerHTML=html;
+
+  $('ctitle').textContent=MONTHS[G.month];
+  
+  var wkHtml='';
+  for(var i=0;i<7;i++)wkHtml+='<div class="wd">'+WDAYS[i]+'</div>';
+  $('cwk').innerHTML=wkHtml;
+
+  var firstDay=new Date(G.year,G.month,1);
+  var startDow=firstDay.getDay();
+  if(startDow===0)startDow=7;
+  startDow--;
+
+  var daysInMonth=new Date(G.year,G.month+1,0).getDate();
+  var gridHtml='';
+
+  for(var i=0;i<startDow;i++){
+    gridHtml+='<div class="cd empty"></div>';
+  }
+
+  for(var d=1;d<=daysInMonth;d++){
+    var dd=emp.days[d];
+    var dayH=dd?dd.d:0;
+    var nightH=dd?dd.n:0;
+    var type=getShiftType(dayH,nightH);
+    var cls='cd';
+    if(type)cls+=' '+type;
+    else cls+=' empty';
+
+    var inner='';
+    if(type){
+      var hrsStr='';
+      if(dayH>0&&nightH>0)hrsStr=formatHours(dayH)+'/'+formatHours(nightH);
+      else if(dayH>0)hrsStr=formatHours(dayH);
+      else hrsStr=formatHours(nightH);
+      
+      inner='<div class="cn">'+d+' <span class="cm">'+MONTHS3[G.month]+'</span></div>';
+      inner+='<div class="chr">'+hrsStr+'ч</div>';
+      
+      var tipText='';
+      if(type==='sut')tipText='Сутки: '+formatHours(dayH)+'/'+formatHours(nightH)+'ч';
+      else if(type==='ds'||type==='ds-light')tipText='Дневная: '+formatHours(dayH)+'ч';
+      else if(type==='ns')tipText='Ночная: '+(dayH>0?formatHours(dayH)+'/'+formatHours(nightH):formatHours(nightH))+'ч';
+      else if(type==='ms')tipText='Смешанная: '+formatHours(dayH)+'/'+formatHours(nightH)+'ч';
+      
+      inner+='<div class="tip">'+tipText+'<br><span style="color:#aaa;font-size:10px;margin-top:4px;display:block">Нажмите для деталей</span></div>';
+      gridHtml+='<div class="'+cls+'" onclick="openDayModal('+d+', \''+type+'\', this)">'+inner+'</div>';
+    }else{
+      inner='<div class="cn">'+d+'</div>';
+      gridHtml+='<div class="'+cls+'">'+inner+'</div>';
+    }
+  }
+
+  $('cgr').innerHTML=gridHtml;
+  $('ec').classList.add('visible');
+  $('cs').classList.add('visible');
+}
+
+function openDayModal(d, type, cellElement) {
+  if(!G.currentEmp || !G.currentEmp.days[d]) return;
+  activeCell = cellElement;
+  
+  var details = G.currentEmp.days[d].details;
+  var dateStr = d + ' ' + MONTHS_GEN[G.month];
+  var typeNames = {'sut':'Сутки', 'ds':'Дневная', 'ds-light':'Дневная', 'ns':'Ночная', 'ms':'Смешанная'};
+  
+  $('modalTitle').textContent = dateStr + ' — ' + (typeNames[type] || 'Смена');
+  $('modalHeader').className = 'modal-header mh-' + type;
+  
+  var html = '';
+  
+  if(details.dayFact > 0) {
+    let dayVal = formatHours(details.dayFact) + ' ч';
+    html += '<div class="modal-stat"><span class="modal-stat-label">День:</span><span class="modal-stat-val">'+dayVal+'</span></div>';
+  }
+  
+  if(details.nightNoCoeff > 0 || details.nightCoeff > 0) {
+    let nnc = details.nightNoCoeff > 0 ? `<div class="modal-stat"><span class="modal-stat-label">Ночь без коэф:</span><span class="modal-stat-val">${formatHours(details.nightNoCoeff)} ч</span></div>` : '';
+    let nc = details.nightCoeff > 0 ? `<div class="modal-stat"><span class="modal-stat-label">Ночь с коэф:</span><span class="modal-stat-val">${formatHours(details.nightCoeff)} ч</span></div>` : '';
+    html += nnc + nc;
+  }
+  
+  var total = (details.dayFact || 0) + (details.nightNoCoeff || 0) + (details.nightCoeff || 0);
+  html += '<div class="modal-stat total"><span class="modal-stat-label" style="color:#2a2a3a">Итого за смену:</span><span class="modal-stat-val" style="color:#e85a1e">'+formatHours(total)+' ч</span></div>';
+
+  $('modalBody').innerHTML = html;
+  
+  var overlay = $('modalOverlay');
+  var modal = $('modal');
+  
+  overlay.style.display = 'flex';
+  overlay.style.opacity = '1';
+  
+  var cellRect = cellElement.getBoundingClientRect();
+  var modalRect = modal.getBoundingClientRect();
+  
+  var scaleX = cellRect.width / modalRect.width;
+  var scaleY = cellRect.height / modalRect.height;
+  var tx = cellRect.left + cellRect.width/2 - (modalRect.left + modalRect.width/2);
+  var ty = cellRect.top + cellRect.height/2 - (modalRect.top + modalRect.height/2);
+  
+  modal.animate([
+    { transform: `translate(${tx}px, ${ty}px) scale(${scaleX}, ${scaleY})`, opacity: 0, borderRadius: '10px' },
+    { transform: 'translate(0, 0) scale(1)', opacity: 1, borderRadius: '20px' }
+  ], { duration: 300, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
+}
+
+function closeModal() {
+  var overlay = $('modalOverlay');
+  var modal = $('modal');
+  if(overlay.style.display === 'none') return;
+  
+  if(activeCell) {
+    var cellRect = activeCell.getBoundingClientRect();
+    var modalRect = modal.getBoundingClientRect();
+    
+    var scaleX = cellRect.width / modalRect.width;
+    var scaleY = cellRect.height / modalRect.height;
+    var tx = cellRect.left + cellRect.width/2 - (modalRect.left + modalRect.width/2);
+    var ty = cellRect.top + cellRect.height/2 - (modalRect.top + modalRect.height/2);
+    
+    var anim = modal.animate([
+      { transform: 'translate(0, 0) scale(1)', opacity: 1, borderRadius: '20px' },
+      { transform: `translate(${tx}px, ${ty}px) scale(${scaleX}, ${scaleY})`, opacity: 0, borderRadius: '10px' }
+    ], { duration: 250, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' });
+    
+    overlay.animate([
+      { opacity: 1 }, 
+      { opacity: 0 }
+    ], { duration: 250 });
+    
+    anim.onfinish = function() {
+      overlay.style.display = 'none';
+      activeCell.classList.add('pulse-view');
+      setTimeout(() => {
+        if(activeCell) activeCell.classList.remove('pulse-view');
+      }, 1200);
+    };
+  } else {
+    overlay.style.display = 'none';
+  }
+}
+
+$('modalClose').addEventListener('click', closeModal);
+$('modalOverlay').addEventListener('click', function(e){
+  if(e.target === this) closeModal();
+});
+
+function doSearch(q){
+  var acl = $('acl');
+  if(!q || q.length < 3){
+    acl.classList.remove('visible'); acl.innerHTML = ''; return;
+  }
+  
+  var ql = q.toLowerCase();
+  var variants = searchVariants(ql);
+  var keys = Object.keys(G.emps);
+  var matches = [];
+  
+  for(var i = 0; i < keys.length; i++){
+    var nm = G.emps[keys[i]].name.toLowerCase();
+    for(var v = 0; v < variants.length; v++){
+      if(nm.indexOf(variants[v]) !== -1){
+        matches.push(keys[i]);
+        break;
+      }
+    }
+  }
+  
+  if(matches.length === 0){
+    acl.classList.remove('visible'); acl.innerHTML = ''; return;
+  }
+  
+  matches.sort();
+  var html = '';
+  for(var i = 0; i < matches.length && i < 20; i++){
+    var nm = G.emps[matches[i]].name;
+    var nmL = nm.toLowerCase();
+    var idx = -1;
+    for(var v = 0; v < variants.length; v++){
+      idx = nmL.indexOf(variants[v]);
+      if(idx !== -1) break;
+    }
+    if(idx === -1) idx = 0;
+    var highlighted = nm.substring(0, idx) + '<mark>' + nm.substring(idx, idx + q.length) + '</mark>' + nm.substring(idx + q.length);
+    html += '<div class="aci" data-key="' + matches[i] + '">' + highlighted + '</div>';
+  }
+  
+  acl.innerHTML = html;
+  acl.classList.add('visible');
+  
+  var items = acl.querySelectorAll('.aci');
+  for(var i = 0; i < items.length; i++){
+    items[i].addEventListener('click', function(){
+      var key = this.getAttribute('data-key');
+      renderEmp(G.emps[key]);
+      $('sinp').value = '';
+      acl.classList.remove('visible');
+    });
+  }
+}
+
+function countWarehouseEmps(wh){
+  var keys=Object.keys(G.emps),n=0;
+  for(var i=0;i<keys.length;i++){
+    if(G.emps[keys[i]].warehouse===wh)n++;
+  }
+  return n;
+}
+
+function openWarehouseChoice(){
+  if(Object.keys(G.emps).length===0)return;
+  var c11=countWarehouseEmps(11);
+  var c12=countWarehouseEmps(12);
+  $('whSub').textContent='за '+MONTHS[G.month]+' '+G.year+' г.';
+  $('whCount11').textContent=c11+' '+pluralPeople(c11);
+  $('whCount12').textContent=c12+' '+pluralPeople(c12);
+  $('whOpt11').disabled=c11===0;
+  $('whOpt12').disabled=c12===0;
+  $('whOverlay').classList.add('visible');
+}
+
+$('printBtn').addEventListener('click',openWarehouseChoice);
+$('whOpt11').addEventListener('click',function(){
+  if(this.disabled)return;
+  $('whOverlay').classList.remove('visible');
+  openPreview(11);
+});
+$('whOpt12').addEventListener('click',function(){
+  if(this.disabled)return;
+  $('whOverlay').classList.remove('visible');
+  openPreview(12);
+});
+$('whCancel').addEventListener('click',function(){
+  $('whOverlay').classList.remove('visible');
+});
+$('whOverlay').addEventListener('click',function(e){
+  if(e.target===this)this.classList.remove('visible');
+});
+
+function collectWarehouseRows(wh){
+  var keys=Object.keys(G.emps).sort(function(a,b){
+    return G.emps[a].name.localeCompare(G.emps[b].name,'ru');
+  });
+  var all=[];
+  for(var i=0;i<keys.length;i++){
+    var emp=G.emps[keys[i]];
+    if(emp.warehouse!==wh)continue;
+    var tD=0,tN=0,shifts=0;
+    var dkeys=Object.keys(emp.days);
+    for(var j=0;j<dkeys.length;j++){
+      var dd=emp.days[dkeys[j]];
+      tD+=dd.d;tN+=dd.n;
+      shifts+=countShifts(dd);
+    }
+    all.push({key:keys[i],name:emp.name,pos:emp.position||'—',hours:tD+tN,shifts:shifts});
+  }
+  return all;
+}
+
+function openPreview(wh){
+  if(Object.keys(G.emps).length===0)return;
+  previewState={wh:wh,excluded:{},showTotals:false};
+  renderPreview();
+  $('printOverlay').classList.add('visible');
+  $('printOverlay').scrollTop=0;
+}
+
+function renderPreview(){
+  var scrollPos=$('printOverlay').scrollTop;
+  var all=collectWarehouseRows(previewState.wh);
+  var active=[],excluded=[];
+  for(var i=0;i<all.length;i++){
+    if(previewState.excluded[all[i].key])excluded.push(all[i]);
+    else active.push(all[i]);
+  }
+
+  var n=active.length;
+  var sizeCls=n>90?'cmp-xxx':n>70?'cmp-xx':n>55?'cmp-xs':n>40?'cmp-s':n>26?'cmp-m':'';
+  var compact=n>26;
+  var xcompact=n>55;
+
+  var headStyle='',logoStyle='',titleStyle='',periodStyle='';
+  if(xcompact){
+    headStyle='margin-bottom:10px;padding-bottom:8px;gap:16px';
+    logoStyle='width:120px';
+    titleStyle='font-size:16px';
+    periodStyle='font-size:12px;margin-top:3px';
+  }else if(compact){
+    headStyle='margin-bottom:14px;padding-bottom:10px;gap:22px';
+    logoStyle='width:180px';
+    titleStyle='font-size:20px';
+    periodStyle='font-size:14px';
+  }
+
+  var whLine=WH_LABELS[previewState.wh]||'';
+  var now=new Date();
+  var genStr=now.toLocaleDateString('ru-RU')+' '+now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+
+  var totalH=0,totalS=0;
+  for(var i=0;i<active.length;i++){
+    totalH+=active[i].hours;
+    totalS+=active[i].shifts;
+  }
+
+  var html='';
+  html+='<div class="report-head"'+(headStyle?' style="'+headStyle+'"':'')+'>';
+  html+='<img src="logo.png" alt="" class="report-logo"'+(logoStyle?' style="'+logoStyle+'"':'')+' onerror="this.style.display=\'none\'">';
+  html+='<div class="report-head-text">';
+  html+='<div class="report-title"'+(titleStyle?' style="'+titleStyle+'"':'')+'>Табель учёта рабочего времени</div>';
+  html+='<div class="report-period"'+(periodStyle?' style="'+periodStyle+'"':'')+'>за '+MONTHS[G.month]+' '+G.year+' г.'+(whLine?' · '+escHtml(whLine):'')+'</div>';
+  html+='</div>';
+  html+='</div>';
+
+  html+='<table class="report-table '+sizeCls+'">';
+  html+='<thead><tr>';
+  html+='<th style="width:36px">№</th>';
+  html+='<th>Сотрудник</th>';
+  html+='<th>Должность</th>';
+  html+='<th style="width:120px">Отработано часов</th>';
+  html+='<th style="width:70px">Смен</th>';
+  html+='<th class="no-print" style="width:36px"></th>';
+  html+='</tr></thead>';
+  html+='<tbody>';
+  if(active.length===0){
+    html+='<tr><td colspan="6" class="empty-msg">Все сотрудники скрыты — верните кого-нибудь из списка исключённых ниже</td></tr>';
+  }
+  for(var i=0;i<active.length;i++){
+    var r=active[i];
+    html+='<tr>';
+    html+='<td class="tac">'+(i+1)+'</td>';
+    html+='<td>'+escHtml(r.name)+'</td>';
+    html+='<td>'+escHtml(r.pos)+'</td>';
+    html+='<td class="tac">'+formatHours(r.hours)+'</td>';
+    html+='<td class="tac">'+r.shifts+'</td>';
+    html+='<td class="tac no-print"><button type="button" class="row-del" data-key="'+escHtml(r.key)+'" title="Убрать из табеля">✕</button></td>';
+    html+='</tr>';
+  }
+  html+='</tbody>';
+  html+='<tfoot'+(previewState.showTotals?'':' style="display:none"')+'><tr>';
+  html+='<td colspan="3">Итого'+(n>0?' ('+n+' '+pluralPeople(n)+')':'')+'</td>';
+  html+='<td class="tac">'+formatHours(totalH)+'</td>';
+  html+='<td class="tac">'+totalS+'</td>';
+  html+='<td class="no-print"></td>';
+  html+='</tr></tfoot>';
+  html+='</table>';
+
+  html+='<div class="excluded-sec no-print'+(excluded.length?'':' hidden')+'">';
+  html+='<div class="excluded-title">Исключены из табеля ('+excluded.length+')</div>';
+  html+='<div class="excluded-list">';
+  for(var i=0;i<excluded.length;i++){
+    var ex=excluded[i];
+    html+='<div class="excluded-item">';
+    html+='<span class="excluded-name">'+escHtml(ex.name)+'</span>';
+    html+='<button type="button" class="row-restore" data-key="'+escHtml(ex.key)+'" title="Вернуть в табель">↺ Вернуть</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  html+='</div>';
+
+  html+='<div class="report-foot">Сформировано: '+genStr+'</div>';
+
+  $('totalsToggle').checked=previewState.showTotals;
+  $('printSheet').innerHTML=html;
+
+  var dels=$('printSheet').querySelectorAll('.row-del');
+  for(var i=0;i<dels.length;i++){
+    dels[i].addEventListener('click',function(){
+      previewState.excluded[this.getAttribute('data-key')]=true;
+      renderPreview();
+    });
+  }
+  var rests=$('printSheet').querySelectorAll('.row-restore');
+  for(var i=0;i<rests.length;i++){
+    rests[i].addEventListener('click',function(){
+      delete previewState.excluded[this.getAttribute('data-key')];
+      renderPreview();
+    });
+  }
+
+  $('printOverlay').scrollTop=scrollPos;
+}
+
+$('totalsToggle').addEventListener('change',function(){
+  previewState.showTotals=this.checked;
+  renderPreview();
+});
+
+function closePreview(){
+  $('printOverlay').classList.remove('visible');
+}
+
+$('printNowBtn').addEventListener('click',function(){window.print();});
+$('printCloseBtn').addEventListener('click',closePreview);
+$('printOverlay').addEventListener('click',function(e){
+  if(e.target===this)closePreview();
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if($('whOverlay').classList.contains('visible')){
+      $('whOverlay').classList.remove('visible');
+      return;
+    }
+    if($('msPopup').classList.contains('visible')){
+      closeMsPopup();
+      return;
+    }
+    if($('printOverlay').classList.contains('visible'))closePreview();
+  }
+});
+
+function autoLoadTabel(){
+  fetch('tabel.xlsx?t='+Date.now(),{cache:'no-store'})
+    .then(function(response){
+      if(!response.ok) throw new Error('Файл не найден (статус '+response.status+')');
+      const lastModified = response.headers.get('Last-Modified');
+      return response.arrayBuffer().then(function(buffer){
+        return { buffer: buffer, lastModified: lastModified };
+      });
+    })
+    .then(function(data){
+      try{
+        var wb = XLSX.read(data.buffer, {type: 'array'});
+        processWB(wb, { lastModified: data.lastModified });
+      }catch(err){
+        $('loadStatus').className = 'status-container error';
+        $('loadStatus').querySelector('.status-text').textContent = 'Ошибка обработки файла';
+        showErr(err.toString());
+      }
+    })
+    .catch(function(err){
+      $('loadStatus').className = 'status-container error';
+      $('loadStatus').querySelector('.status-text').textContent = 'Файл не найден';
+      showErr(err.message + '\nПоместите файл tabel.xlsx в папку со скриптом.');
+    });
+}
+
+$('sinp').addEventListener('input', function(e){ doSearch(e.target.value.trim()); });
+$('sinp').addEventListener('focus', function(e){ doSearch(e.target.value.trim()); });
+document.addEventListener('click', function(e){
+  if(e.target !== $('sinp') && !$('acl').contains(e.target)){
+    $('acl').classList.remove('visible');
+  }
+});
+
+$('loadStatus').addEventListener('click', function(){
+  if(fileLastModified) {
+    const textEl = this.querySelector('.status-text');
+    if(!isShowingDate){
+      textEl.textContent = `Обновлено: ${fileLastModified}`;
+      isShowingDate = true;
+    }else{
+      textEl.textContent = 'Табель загружен ✓';
+      isShowingDate = false;
+    }
+  }
+});
+
+window.addEventListener('DOMContentLoaded', autoLoadTabel);
+</script>
+</body>
+</html>

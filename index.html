@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OKKAM</title>
+<meta name="theme-color" content="#FF8C00">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const text = "OKKAM";
+  let index = 0;
+  let isDeleting = false;
+
+  function animateTitle() {
+    if (!isDeleting) {
+      index++;
+      document.title = text.substring(0, index);
+      if (index === text.length) {
+        isDeleting = true;
+        setTimeout(animateTitle, 2000);
+        return;
+      }
+    } else {
+      index--;
+      document.title = index > 0 ? text.substring(0, index) : "\u00A0";
+      if (index === 0) {
+        isDeleting = false;
+        setTimeout(animateTitle, 600);
+        return;
+      }
+    }
+    setTimeout(animateTitle, isDeleting ? 120 : 220);
+  }
+
+  animateTitle();
+});
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow-y:scroll}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:4px}
+::-webkit-scrollbar-thumb{background:rgba(232,90,30,.35);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(232,90,30,.65)}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:#e4e5eb;
+  padding:24px 20px 40px;
+  color:#2a2a3a;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+img{-webkit-user-drag:none;pointer-events:none}
+a{text-decoration:none;color:inherit}
+
+.container{
+  width:100%;
+  max-width:1000px;
+  margin:0 auto;
+}
+
+.header{
+  text-align:center;
+  margin-bottom:32px;
+  padding:42px 24px 34px;
+  background:linear-gradient(135deg,#e85a1e 0%,#ff6f32 50%,#ff8855 100%);
+  border-radius:20px;
+  box-shadow:8px 14px 32px rgba(200,70,20,.35);
+  position:relative;
+  overflow:hidden;
+}
+
+.header::before{
+  content:'';
+  position:absolute;
+  top:-50%;
+  left:-50%;
+  width:200%;
+  height:200%;
+  background:radial-gradient(ellipse at 30% 50%,rgba(255,255,255,.18) 0%,transparent 60%);
+  pointer-events:none;
+}
+
+.header::after{
+  content:'';
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);
+}
+
+@keyframes logoEntrance {
+  0%{
+    opacity:0;
+    transform:translateY(16px) scale(0.92);
+    filter:brightness(0) invert(1) drop-shadow(0 0 0 rgba(255,255,255,0));
+  }
+  60%{
+    opacity:1;
+    transform:translateY(-2px) scale(1.03);
+    filter:brightness(0) invert(1) drop-shadow(0 0 25px rgba(255,255,255,0.9));
+  }
+  100%{
+    opacity:1;
+    transform:translateY(0) scale(1);
+    filter:brightness(0) invert(1) drop-shadow(0 4px 18px rgba(255,255,255,0.6));
+  }
+}
+
+@keyframes logoPulseGlow {
+  0%, 100%{
+    filter:brightness(0) invert(1) drop-shadow(0 4px 15px rgba(255,255,255,0.55));
+  }
+  50%{
+    filter:brightness(0) invert(1) drop-shadow(0 6px 26px rgba(255,255,255,0.95)) drop-shadow(0 0 40px rgba(255,200,160,0.5));
+  }
+}
+
+.logo-wrap{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  min-height:56px;
+  margin-bottom:12px;
+}
+
+.header-logo{
+  height:54px;
+  width:auto;
+  max-width:280px;
+  object-fit:contain;
+  opacity:0;
+  animation:
+    logoEntrance 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards,
+    logoPulseGlow 3.5s ease-in-out 2s infinite;
+}
+
+.header-subtitle{
+  color:rgba(255,255,255,.92);
+  font-size:15px;
+  font-weight:500;
+  letter-spacing:0.3px;
+  text-shadow:0 1px 3px rgba(0,0,0,.15);
+}
+
+.ticker-wrap {
+  width: 100%;
+  overflow: hidden;
+  background: #d8d9e4;
+  margin: -10px auto 28px;
+  position: relative;
+  border-radius: 8px;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
+  height: 38px;
+}
+
+.ticker-container {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  align-items: center;
+  position: relative;
+  animation: tickerLoop 25s linear infinite;
+}
+
+.ticker-track {
+  display: flex;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.ticker-track span {
+  color: #e85a1e;
+  padding: 0 6px;
+  display: inline-block;
+  transition: opacity 0.05s ease;
+}
+
+.ticker-track span.flicker {
+  animation: flickerEffect 0.08s infinite alternate;
+}
+
+@keyframes tickerLoop {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes flickerEffect {
+  0% { opacity: 1; filter: drop-shadow(0 0 3px #e85a1e); }
+  40% { opacity: 0.15; filter: none; }
+  80% { opacity: 0.9; }
+  100% { opacity: 0.05; }
+}
+
+.ticker-corrupt-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ticker-line {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  opacity: 0;
+}
+
+@keyframes lineFlicker {
+  0%, 75%, 100% { 
+    opacity: 0; 
+    background: transparent;
+    box-shadow: none;
+  }
+  77% { 
+    opacity: 1; 
+    background: #e85a1e; 
+    box-shadow: 0 0 6px #e85a1e;
+  }
+  79% { 
+    opacity: 0.1; 
+  }
+  81% { 
+    opacity: 0.9; 
+    background: #ff6f32; 
+    box-shadow: 0 0 4px #ff6f32;
+  }
+  83% { 
+    opacity: 0; 
+  }
+  92% { 
+    opacity: 0.6; 
+    background: #a0a2b0; 
+    box-shadow: none;
+  }
+  95% { 
+    opacity: 0; 
+  }
+}
+
+.info-btn{
+  position:absolute;
+  top:20px;
+  right:20px;
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  background:rgba(255,255,255,.2);
+  backdrop-filter:blur(4px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-weight:700;
+  font-size:16px;
+  cursor:pointer;
+  transition:all .25s ease;
+  z-index:5;
+  border:1px solid rgba(255,255,255,.15);
+}
+
+.info-btn:hover{
+  background:rgba(255,255,255,.35);
+  transform:scale(1.05);
+  box-shadow:0 4px 14px rgba(0,0,0,.15);
+}
+
+.info-btn svg{
+  width:20px;
+  height:20px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+  gap:20px;
+  margin-bottom:30px;
+}
+
+.card{
+  background:#ffffff;
+  border-radius:18px;
+  padding:26px 22px 22px;
+  box-shadow:4px 6px 18px rgba(30,30,60,.07);
+  border:1px solid rgba(0,0,0,.06);
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  transition:transform .28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow .28s ease, border-color .28s ease;
+  cursor:pointer;
+  overflow:hidden;
+}
+
+.card:hover{
+  transform:translateY(-5px);
+  box-shadow:0 14px 30px rgba(232,90,30,.18), 0 4px 10px rgba(0,0,0,.04);
+  border-color:rgba(232,90,30,.45);
+}
+
+.card.disabled{
+  cursor:not-allowed;
+  opacity:0.92;
+}
+.card.disabled:hover{
+  transform:none;
+  box-shadow:4px 6px 18px rgba(30,30,60,.07);
+  border-color:rgba(0,0,0,.06);
+}
+
+.card-category-red::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 22px 22px;
+  border-color: transparent transparent #ef4444 transparent;
+  transition: border-color .25s ease;
+  pointer-events: none;
+}
+.card-category-red:hover::after {
+  border-color: transparent transparent #dc2626 transparent;
+}
+
+.card-category-green::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 22px 22px;
+  border-color: transparent transparent #22c55e transparent;
+  transition: border-color .25s ease;
+  pointer-events: none;
+}
+.card-category-green:hover::after {
+  border-color: transparent transparent #16a34a transparent;
+}
+
+.card-corner-tag-green {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #22c55e;
+  line-height: 1;
+  pointer-events: none;
+  transition: color .25s ease;
+}
+.card-category-green:hover .card-corner-tag-green {
+  color: #16a34a;
+}
+
+.card-category-red-blue::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 22px 0 0 22px;
+  border-color: transparent transparent transparent #3b82f6;
+  transition: border-color .25s ease;
+  pointer-events: none;
+}
+.card-category-red-blue:hover::before {
+  border-color: transparent transparent transparent #2563eb;
+}
+.card-category-red-blue::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 22px 22px;
+  border-color: transparent transparent #ef4444 transparent;
+  transition: border-color .25s ease;
+  pointer-events: none;
+}
+.card-category-red-blue:hover::after {
+  border-color: transparent transparent #dc2626 transparent;
+}
+
+.card-arrow{
+  position:absolute;
+  top:20px;
+  right:20px;
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  background:#f2f3f7;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#737787;
+  transition:all .25s ease;
+}
+
+.card-arrow svg{
+  width:18px;
+  height:18px;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  fill:none;
+  transition:transform .25s ease;
+}
+
+.card:hover .card-arrow{
+  background:linear-gradient(135deg,#e85a1e,#ff6f32);
+  color:#ffffff;
+  box-shadow:0 4px 12px rgba(232,90,30,.35);
+}
+
+.card:hover .card-arrow svg{
+  transform:translateX(2px);
+}
+
+.icon-box{
+  width:58px;
+  height:58px;
+  border-radius:14px;
+  background:#fff4ee;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:18px;
+  color:#e85a1e;
+  border:1px solid rgba(232,90,30,.15);
+  transition:all .3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.icon-box svg{
+  width:28px;
+  height:28px;
+  transition:transform .3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card:not(.disabled):hover .icon-box{
+  transform:scale(1.08);
+  background:linear-gradient(135deg,#e85a1e,#ff6f32);
+  border-color:transparent;
+  color:#ffffff;
+  box-shadow:0 6px 16px rgba(232,90,30,.35);
+}
+
+.card:not(.disabled):hover .icon-box svg{
+  transform:rotate(-30deg);
+}
+
+.card-content{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+.card-title{
+  font-size:18px;
+  font-weight:700;
+  color:#1e2029;
+  margin-bottom:8px;
+  line-height:1.25;
+}
+
+.card-desc{
+  font-size:13.5px;
+  color:#686d7d;
+  line-height:1.45;
+  margin-bottom:12px;
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.4px;
+  text-transform:uppercase;
+  padding:4px 9px;
+  border-radius:6px;
+  width:fit-content;
+}
+
+.badge-dev{
+  background:#fff4e5;
+  color:#d97706;
+  border:1px solid rgba(217,119,6,.25);
+  margin-top:auto;
+  align-self:flex-start;
+}
+
+.badge-soon{
+  position:absolute;
+  top:20px;
+  right:20px;
+  background:#eef0f5;
+  color:#737787;
+  border:1px solid rgba(0,0,0,.08);
+}
+
+.modal-overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  background:rgba(0,0,0,.7);
+  backdrop-filter:blur(6px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:1000;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .3s ease;
+}
+
+.modal-overlay.show{
+  opacity:1;
+  pointer-events:all;
+}
+
+.modal-content{
+  background:#fff;
+  border-radius:16px;
+  width:100%;
+  max-width:520px;
+  max-height:75vh;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 12px 36px rgba(0,0,0,.2);
+  transform:translateY(20px);
+  transition:transform .3s ease;
+  overflow:hidden;
+}
+
+.modal-overlay.show .modal-content{
+  transform:translateY(0);
+}
+
+.modal-header{
+  padding:16px 20px;
+  background:linear-gradient(135deg,#e85a1e 0%,#ff6f32 50%,#ff8855 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  flex-shrink:0;
+}
+
+.modal-title{
+  font-size:17px;
+  font-weight:700;
+  color:#fff;
+  text-align:center;
+  text-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+
+.modal-close{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  background:rgba(255,255,255,.2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:all .25s ease;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.2);
+}
+
+.modal-close:hover{
+  background:rgba(255,255,255,.35);
+  transform:scale(1.05);
+}
+
+.modal-close svg{
+  width:18px;
+  height:18px;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.modal-body{
+  flex:1;
+  overflow-y:auto;
+  padding:16px;
+  scrollbar-gutter: stable;
+  border-radius:0 0 16px 16px;
+}
+
+.version-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.version-item{
+  padding:10px 14px;
+  background:#f9fafb;
+  border-radius:10px;
+  font-size:13.5px;
+  line-height:1.4;
+  color:#4b5563;
+  border:1px solid rgba(0,0,0,.04);
+}
+
+.version-item strong{
+  font-weight:700;
+  color:#e85a1e;
+  background:rgba(232,90,30,.06);
+  padding:2px 6px;
+  border-radius:4px;
+  margin-right:4px;
+  font-size:13px;
+}
+
+.current-version{
+  background:#f0fdf4;
+  border-color:#dcfce7;
+  color:#166534;
+  position:sticky;
+  top:0;
+  z-index:2;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+.current-version strong{
+  background:#dcfce7;
+  color:#166534;
+}
+
+.sub-version-item {
+  padding: 6px 10px;
+  background: #ffffff;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid rgba(0,0,0,.04);
+  margin-top: 4px;
+}
+
+.footer{
+  text-align:center;
+  margin-top:40px;
+  font-size:13px;
+  color:#8c909e;
+  letter-spacing:0.2px;
+}
+
+.brain-emoji{
+  display:inline-block;
+  animation:brainPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes brainPulse{
+  0%,100%{transform:scale(1) rotate(0deg)}
+  25%{transform:scale(1.1) rotate(5deg)}
+  50%{transform:scale(0.95) rotate(-5deg)}
+  75%{transform:scale(1.05) rotate(3deg)}
+}
+
+@media (max-width:640px){
+  body{padding:16px 12px 30px}
+  .header{padding:30px 16px 24px;margin-bottom:22px}
+  .header-logo{height:46px}
+  .grid{grid-template-columns:1fr;gap:14px;margin-bottom:20px}
+  .card{padding:20px 18px 18px}
+  .modal-body{padding:12px}
+  .version-item{padding:8px 12px;font-size:12.5px}
+  .modal-header{padding:14px 16px}
+  .modal-close{top:10px;right:10px;width:32px;height:32px}
+  .info-btn{top:12px;right:12px;width:34px;height:34px}
+  .ticker-track{font-size:15px}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header class="header">
+    <button class="info-btn" id="infoBtn">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="16" x2="12" y2="12"/>
+        <line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+    </button>
+    <div class="logo-wrap">
+      <img 
+        src="https://static.tildacdn.com/tild3533-3834-4361-a636-646263663031/logo.svg" 
+        alt="Логотип" 
+        class="header-logo"
+      >
+    </div>
+    <div class="header-subtitle">Выберите нужный раздел для работы</div>
+  </header>
+
+  <div class="ticker-wrap">
+    <div class="ticker-corrupt-lines" id="tickerCorruptLines"></div>
+    <div class="ticker-container" id="tickerContainer">
+      <div class="ticker-track" id="tickerTrack1"></div>
+      <div class="ticker-track" id="tickerTrack2"></div>
+    </div>
+  </div>
+
+  <main class="grid">
+    <a href="http://okkam.space/dublikat" class="card">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="4" width="2" height="16"/><rect x="5" y="4" width="1" height="16"/><rect x="7" y="4" width="3" height="16"/><rect x="11" y="4" width="1" height="16"/><rect x="13" y="4" width="2" height="16"/><rect x="16" y="4" width="3" height="16"/><rect x="20" y="4" width="2" height="16"/></svg></div>
+      <div class="card-content">
+        <h2 class="card-title">Дубликат КИТУ</h2>
+        <p class="card-desc">печать этикеток РТ</p>
+      </div>
+    </a>
+
+    <a href="http://okkam.space/perepak" class="card card-category-red">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M7 7h.01M17 7h.01M7 17h.01M14 14h3v3h-3zM17 17v4M14 21h7"/></svg></div>
+      <div class="card-content">
+        <h2 class="card-title">Multon</h2>
+        <p class="card-desc">генерация и печать этикеток</p>
+      </div>
+    </a>
+
+    <a href="http://okkam.space/gtin" class="card card-category-red">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/><line x1="11" y1="7" x2="11" y2="12"/><polyline points="8 9.5 11 12.5 14 9.5"/></svg></div>
+      <div class="card-content">
+        <h2 class="card-title">Перепак</h2>
+        <p class="card-desc">Поиск GTIN и запрос кодов</p>
+      </div>
+    </a>
+
+    <a href="http://okkam.space/sborka/" class="card card-category-red">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 2v3H5V5h14zm-7 5h7v3h-7v-3zm-7 3v-3h5v3H5zm0 2h5v4H5v-4zm7 4v-4h7v4h-7z"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <h2 class="card-title">Формирование заказа</h2>
+        <p class="card-desc">автоматическое заполнение Excel документа</p>
+      </div>
+    </a>
+
+    <a href="http://okkam.space/sverka" class="card card-category-red-blue">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <h2 class="card-title">Сверка остатков</h2>
+        <p class="card-desc">ручная сверка остатков SAP и WMS</p>
+      </div>
+    </a>
+
+    <a href="http://okkam.space/reestr/" class="card">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18M3 15h18M9 3v18" />
+        </svg>
+      </div>
+      <div class="card-content">
+        <h2 class="card-title">Реестр</h2>
+        <p class="card-desc">формирование реестра</p>
+      </div>
+    </a>
+
+    <a href="http://okkam.space/zakaz" class="card">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+      </div>
+      <div class="card-content">
+        <h2 class="card-title">Поставка</h2>
+        <p class="card-desc">Запрос товаров для поставки</p>
+      </div>
+    </a>
+
+    <a href="https://okkam.space/x5" class="card card-category-green">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24">
+          <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="16" font-weight="800" font-family="-apple-system, sans-serif" fill="currentColor">x5</text>
+        </svg>
+      </div>
+      <div class="card-content">
+        <h2 class="card-title">x5</h2>
+        <p class="card-desc">работа с файлом х5</p>
+      </div>
+      <span class="card-corner-tag-green">х5</span>
+    </a>
+
+    <a href="http://okkam.space/doki/" class="card">
+      <div class="card-arrow"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8v2H8z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 11h8v2H8z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 15h6v2H8z"></path>
+        </svg>
+      </div>
+      <div class="card-content">
+        <h2 class="card-title">Печать документов</h2>
+        <p class="card-desc">быстрая печать бланков</p>
+      </div>
+    </a>
+
+    <div class="card disabled">
+      <span class="badge badge-soon">скоро</span>
+      <div class="icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="card-content">
+        <h2 class="card-title">???</h2>
+        <p class="card-desc">если есть информацию которую я могу выдернуть и отобразить - пишите на вацап</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">сделано без <span class="brain-emoji">🧠</span></footer>
+</div>
+
+<div class="modal-overlay" id="versionModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">История обновлений</h3>
+      <button class="modal-close" id="modalClose"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="version-list">
+        <details class="version-item current-version" open>
+          <summary style="cursor:pointer; outline:none;"><strong>v 6.6.3</strong> Наведение порядка, протирание пыли, добавление иконки и новых багов для дальнейшего фикса</summary>
+          <div style="margin-top: 8px; display:flex; flex-direction:column; gap:4px;">
+            <div class="sub-version-item">v 6.6.2 Фикс бага с печатью пустых этикеток перепака при изменении полей</div>
+            <div class="sub-version-item">v 6.6.1 Фикс багов и добавление новых</div>
+          </div>
+        </details>
+        <details class="version-item">
+          <summary style="cursor:pointer; outline:none;"><strong>v 6.5.3</strong> Подсчёт ТС на отгрузки/приходы + подсчёт паллет</summary>
+          <div style="margin-top: 8px; display:flex; flex-direction:column; gap:4px;">
+            <div class="sub-version-item">v 6.5.2 Выделение клиентов, которые грузятся только после письма</div>
+            <div class="sub-version-item">v 6.5.1 Выделение клиентов, которые принимают товары только паллетами</div>
+            <div class="sub-version-item">v 6.4.3 Очистка списка по паролю</div>
+            <div class="sub-version-item">v 6.4.2 Построчное сохранение и получение текущего списка перед сохранением (для избегания перезаписи строк при одновременном открытии одной версии)</div>
+            <div class="sub-version-item">v 6.4.1 Разбивка по складам</div>
+            <div class="sub-version-item">v 6.3.6 Фиксы и вывод кратких сведений о заполненности + цвет карточки ячейки в цвет самой ячейки</div>
+            <div class="sub-version-item">v 6.3.5 Закреплённая сетка ячеек на мобильном</div>
+            <div class="sub-version-item">v 6.3.4 Адаптация под мобильный телефон</div>
+            <div class="sub-version-item">v 6.3.3 Анимация закрытия карточки ячейки в область ячейки + подсветка ячейки</div>
+            <div class="sub-version-item">v 6.3.2.2 Область увеличения не прячется под интерфейс по верхнему и нижнему краю</div>
+            <div class="sub-version-item">v 6.3.2.1 Область увеличения с отображением текущих координат</div>
+            <div class="sub-version-item">v 6.3.2 Интерактивная карта в полный размер</div>
+            <div class="sub-version-item">v 6.3.1 Список товаров и поиск в строках</div>
+            <div class="sub-version-item">v 6.2.2 Выделение цветом неполных дневных смен и смен с переработками</div>
+            <div class="sub-version-item">v 6.2.1 Отображение дневных\ночных\смешанных смен и суток</div>
+            <div class="sub-version-item">v 6.2 Разделение часов на дневные и ночные</div>
+            <div class="sub-version-item">v 6.1 Автоматическая подгрузка табеля из выгруженного файла</div>
+            <div class="sub-version-item">v 6.0 Табель смен</div>
+          </div>
+        </details>
+        <div class="version-item"><strong>v 5.0</strong> Главное меню</div>
+        <details class="version-item">
+          <summary style="cursor:pointer; outline:none;"><strong>v 4.5</strong> Подгрузка и форматирование ШК товара из файла с кодами</summary>
+          <div style="margin-top: 8px; display:flex; flex-direction:column; gap:4px;">
+            <div class="sub-version-item">v 4.4 Добавление автоочистки</div>
+            <div class="sub-version-item">v 4.3 Правка позиционирования элементов для печати</div>
+            <div class="sub-version-item">v 4.2.1 Фикс генератора ШК товара, позиционирование элементов</div>
+            <div class="sub-version-item">v 4.2 Добавление ШК и Артикула товара, добавление логотипа</div>
+            <div class="sub-version-item">v 4.1.2 Очередной фикс форматирования кодов</div>
+            <div class="sub-version-item">v 4.1.1 Фикс форматирования кодов</div>
+            <div class="sub-version-item">v 4.1 Загрузка файла с кодами (вместо ручной вставки строк) и перевод в нужный формат</div>
+            <div class="sub-version-item">v 4.0 Генератор этикеток Мултон</div>
+          </div>
+        </details>
+        <details class="version-item">
+          <summary style="cursor:pointer; outline:none;"><strong>v 3.1</strong> Фикс багов полученных в ходе фикса и оптимизации</summary>
+          <div style="margin-top: 8px; display:flex; flex-direction:column; gap:4px;">
+            <div class="sub-version-item">v 3.0 Фикс багов, доработка функционала и оптимизация</div>
+          </div>
+        </details>
+        <details class="version-item">
+          <summary style="cursor:pointer; outline:none;"><strong>v 2.2</strong> Копирование выведенной информации</summary>
+          <div style="margin-top: 8px; display:flex; flex-direction:column; gap:4px;">
+            <div class="sub-version-item">v 2.1 Вывод наименования для проверки корректности артикула</div>
+            <div class="sub-version-item">v 2.0 Поиск ШК по артикулу мултон</div>
+          </div>
+        </details>
+        <details class="version-item">
+          <summary style="cursor:pointer; outline:none;"><strong>v 1.1.2</strong> Исправление автоочистки и предпросмотра. Добавление нового формата генерации ШК</summary>
+          <div style="margin-top: 8px; display:flex; flex-direction:column; gap:4px;">
+            <div class="sub-version-item">v 1.1 Добавление автоочистки и изменение предпросмотра</div>
+            <div class="sub-version-item">v 1.0 Дубликат КИТУ</div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function createCorruptLines() {
+  const container = document.getElementById('tickerCorruptLines');
+  container.innerHTML = '';
+  
+  const positions = [8, 19, 34, 52, 67, 78, 91];
+  
+  positions.forEach(pos => {
+    const line = document.createElement('div');
+    line.className = 'ticker-line';
+    
+    const width = Math.random() < 0.6 ? 1 : (Math.random() * 1.5 + 1);
+    line.style.width = width + 'px';
+    line.style.left = pos + '%';
+    
+    const duration = (2.5 + Math.random() * 3).toFixed(2);
+    const delay = (Math.random() * 4).toFixed(2);
+    
+    line.style.animation = `lineFlicker ${duration}s ease-in-out ${delay}s infinite`;
+    container.appendChild(line);
+  });
+}
+
+function initBrokenTicker() {
+  const track1 = document.getElementById('tickerTrack1');
+  const track2 = document.getElementById('tickerTrack2');
+  const basePhrase = "Tут могла быть ваша реклама, но вы её не заказываете(((";
+  const words = basePhrase.split(' ');
+  
+  const startIndex = 0;
+  const shiftedWords = [...words.slice(startIndex), ...words.slice(0, startIndex)];
+  
+  function buildHTML() {
+    let html = '';
+    for (let r = 0; r < 3; r++) {
+      shiftedWords.forEach(word => {
+        html += `<span>${word}</span>`;
+      });
+      html += `<span style="padding: 0 30px;">•</span>`;
+    }
+    return html;
+  }
+
+  const trackContent = buildHTML();
+  track1.innerHTML = trackContent;
+  track2.innerHTML = trackContent;
+
+  function updateFlickers() {
+    const allSpans = document.querySelectorAll('.ticker-track span');
+    allSpans.forEach(span => span.classList.remove('flicker'));
+    
+    const count = Math.floor(Math.random() * 4) + 3;
+    for (let i = 0; i < count; i++) {
+      const randomIndex = Math.floor(Math.random() * allSpans.length);
+      if (allSpans[randomIndex].textContent !== '•') {
+        allSpans[randomIndex].classList.add('flicker');
+      }
+    }
+
+    const nextInterval = Math.floor(Math.random() * 500) + 400;
+    setTimeout(updateFlickers, nextInterval);
+  }
+
+  updateFlickers();
+  createCorruptLines();
+}
+
+window.addEventListener('load', () => {
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('selectstart', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && [73,74,67].includes(e.keyCode)) || 
+        (e.ctrlKey && [85,83].includes(e.keyCode))) {
+      e.preventDefault();
+    }
+  });
+  
+  initBrokenTicker();
+  
+  const infoBtn = document.getElementById('infoBtn');
+  const versionModal = document.getElementById('versionModal');
+  const modalClose = document.getElementById('modalClose');
+
+  infoBtn.addEventListener('click', () => {
+    versionModal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  });
+
+  modalClose.addEventListener('click', () => {
+    versionModal.classList.remove('show');
+    document.body.style.overflow = '';
+  });
+
+  versionModal.addEventListener('click', (e) => {
+    if(e.target === versionModal) {
+      versionModal.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  });
+});
+</script>
+</body>
+</html>

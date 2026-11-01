@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Панель загрузки | ОККАМ</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+@page{size:100mm 50mm;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow-y:scroll}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:4px}
+::-webkit-scrollbar-thumb{background:rgba(61,90,158,.35);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(61,90,158,.55)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e4e5eb;padding:20px;color:#2a2a3a;-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
+img{-webkit-user-drag:none;pointer-events:none}
+.container{max-width:900px;margin:0 auto;padding-bottom:100px}
+.back-btn{position:fixed;top:20px;left:20px;width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:7px 9px 20px rgba(30,30,60,.16);transition:all .25s;z-index:1000;text-decoration:none}
+.back-btn:hover{background:rgba(61,90,158,.08);transform:translateY(-2px);box-shadow:9px 12px 26px rgba(30,30,60,.22)}
+.back-btn:active{transform:translateX(-1px)}
+.back-btn svg{width:22px;height:22px;fill:#3d5a9e}
+.header{text-align:center;margin-bottom:28px;padding:24px 20px;background:linear-gradient(135deg,#e85a1e,#ff6f32 50%,#ff8855);border-radius:16px;box-shadow:8px 12px 28px rgba(200,70,20,.35);position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 30% 50%,rgba(255,255,255,.1) 0%,transparent 60%);pointer-events:none}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent)}
+.header-icon{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,.15);backdrop-filter:blur(4px);margin-bottom:12px;border:1px solid rgba(255,255,255,.2);box-shadow:4px 6px 14px rgba(0,0,0,.18);opacity:0;transform:scale(.5);transition:opacity .6s ease,transform .6s cubic-bezier(.34,1.56,.64,1);line-height:1}
+.header-icon svg{width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.header-icon.visible{opacity:1;transform:scale(1);animation:heartbeat 1.2s ease-in-out .3s 3}
+@keyframes heartbeat{0%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}100%{transform:scale(1)}}
+.header h1{font-size:25px;color:#fff;font-weight:700;position:relative}
+.header .subtitle{font-size:15px;color:rgba(255,255,255,.7);margin-top:6px;position:relative}
+.card{background:#f5f5fa;border-radius:16px;padding:28px;margin-bottom:20px;border:1px solid rgba(0,0,0,.06);box-shadow:10px 14px 36px rgba(30,30,60,.18)}
+.fg{margin-bottom:0}
+.fg label{display:block;font-size:17px;font-weight:600;margin-bottom:18px;color:#4a4a65;text-transform:uppercase;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px}
+.upload-area{border:2px dashed rgba(61,90,158,.3);border-radius:12px;padding:30px 20px;text-align:center;background:rgba(255,255,255,.5);transition:all .3s ease;cursor:pointer;position:relative}
+.upload-area:hover,.upload-area.dragover{border-color:#3d5a9e;background:rgba(61,90,158,.05)}
+.file-input{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.upload-placeholder svg{width:48px;height:48px;fill:none;stroke:#3d5a9e;stroke-width:1.5;margin-bottom:12px}
+.upload-placeholder span{display:block;font-size:15px;color:#4a4a65;font-weight:500}
+.file-info{margin-top:12px;font-size:14px;font-weight:600;min-height:20px}
+.file-info.detecting{color:#3d5a9e}
+.file-info.success{color:#2c6e49}
+.file-info.error{color:#8b2c2c}
+.file-info.debug{color:#a06820;font-size:12px}
+.links-row{display:flex;gap:15px;margin-top:20px;justify-content:center;flex-wrap:wrap}
+.link-btn{padding:12px 24px;font-size:15px;font-weight:600;background:#fff;color:#3d5a9e;border:1.5px solid rgba(61,90,158,.2);border-radius:12px;text-decoration:none;display:flex;align-items:center;gap:8px;box-shadow:3px 4px 10px rgba(30,30,60,.08);transition:all .25s}
+.link-btn:hover{background:rgba(61,90,158,.08);border-color:#3d5a9e;transform:translateY(-2px)}
+.link-btn svg{width:18px;height:18px;fill:currentColor}
+.runaway-container{text-align:center;margin-top:40px;position:relative;height:80px}
+.btn-runaway{padding:16px 32px;font-size:18px;font-weight:800;background:linear-gradient(135deg,#e85a1e,#ff6f32);color:#fff;border:none;border-radius:14px;cursor:pointer;box-shadow:8px 12px 28px rgba(200,70,20,.4);transition:all .2s cubic-bezier(.25,.46,.45,.94);text-transform:uppercase;letter-spacing:1px;z-index:100}
+.toast{position:fixed;top:20px;right:20px;padding:14px 22px;border-radius:12px;font-size:14px;font-weight:600;z-index:10001;opacity:0;transform:translateY(-20px);transition:all .3s ease;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.toast.visible{opacity:1;transform:translateY(0)}
+.toast.green{background:#2c6e49;color:#fff}
+.toast.red{background:#8b2c2c;color:#fff}
+.toast.blue{background:#3d5a9e;color:#fff}
+.toast.orange{background:#a06820;color:#fff}
+</style>
+</head>
+<body>
+<a href="http://okkam.space" class="back-btn">
+<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+</a>
+<div class="container">
+<div class="header">
+<div class="header-icon" id="headerIcon">
+<svg viewBox="0 0 24 24">
+<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+</svg>
+</div>
+<h1>Панель загрузки</h1>
+<div class="subtitle">Автоматическое определение и распределение</div>
+</div>
+<div class="card">
+<div class="fg">
+<label>Загрузка файла</label>
+<div class="upload-area" id="dropZone">
+<input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv,.ods">
+<div class="upload-placeholder">
+<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+<span>Выберите или перетащите файл (.xlsx, .xls, .csv, .ods)</span>
+</div>
+<div class="file-info" id="fileInfo"></div>
+</div>
+</div>
+<div class="links-row">
+<a href="https://okkam.space/tabel1/" class="link-btn" target="_blank">
+<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+Табель
+</a>
+<a href="https://okkam.space/zapolnenie1/" class="link-btn" target="_blank">
+<svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+Заполненность склада
+</a>
+</div>
+</div>
+<div class="runaway-container">
+<button class="btn-runaway" id="runawayBtn">Показать исходный код</button>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const headerIcon = document.getElementById('headerIcon');
+setTimeout(() => { headerIcon.classList.add('visible'); }, 500);
+
+const toast = document.getElementById('toast');
+function showToast(msg, type) {
+  toast.textContent = msg;
+  toast.className = 'toast ' + type;
+  setTimeout(() => toast.classList.add('visible'), 10);
+  setTimeout(() => { toast.classList.remove('visible'); }, 3000);
+}
+
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+
+function detectFileType(workbook) {
+  const firstSheetName = workbook.SheetNames[0];
+  const firstSheet = workbook.Sheets[firstSheetName];
+
+  let a1Value = '';
+  let numCols = 0;
+  let numRows = 0;
+
+  if (firstSheet['A1']) {
+    a1Value = String(firstSheet['A1'].v || '').trim();
+  }
+
+  if (firstSheet['!ref']) {
+    const range = XLSX.utils.decode_range(firstSheet['!ref']);
+    numCols = range.e.c + 1;
+    numRows = range.e.r + 1;
+  }
+
+  const a1Lower = a1Value.toLowerCase();
+  const isOstatokByHeader = a1Lower.includes('ячейка');
+  const isOstatokByCols = (numCols >= 18 && numCols <= 20);
+
+  let fileType = 'tabel';
+  let typeName = 'Табель';
+  let reason = '';
+
+  if (isOstatokByHeader || isOstatokByCols) {
+    fileType = 'ostatok';
+    typeName = 'Остатки';
+    if (isOstatokByHeader && isOstatokByCols) {
+      reason = 'A1 содержит "ячейка" и столбцов: ' + numCols;
+    } else if (isOstatokByHeader) {
+      reason = 'A1 содержит "ячейка" (столбцов: ' + numCols + ')';
+    } else {
+      reason = 'Столбцов: ' + numCols + ' (похоже на остатки)';
+    }
+  } else {
+    reason = 'A1: "' + a1Value + '", столбцов: ' + numCols;
+  }
+
+  return {
+    fileType: fileType,
+    typeName: typeName,
+    a1Value: a1Value,
+    numCols: numCols,
+    numRows: numRows,
+    reason: reason
+  };
+}
+
+function processAndUpload(file) {
+  if (!file) return;
+
+  const validExts = ['xlsx', 'xls', 'csv', 'ods'];
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (!validExts.includes(ext)) {
+    fileInfo.textContent = 'Ошибка: недопустимый формат файла';
+    fileInfo.className = 'file-info error';
+    showToast('Разрешены только форматы: xlsx, xls, csv, ods', 'red');
+    return;
+  }
+
+  if (typeof XLSX === 'undefined') {
+    fileInfo.textContent = 'Ошибка: библиотека обработки таблиц не загружена';
+    fileInfo.className = 'file-info error';
+    showToast('Библиотека SheetJS не загрузилась. Обновите страницу.', 'red');
+    return;
+  }
+
+  fileInfo.textContent = 'Анализ содержимого файла...';
+  fileInfo.className = 'file-info detecting';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      
+      let readOptions = { type: 'array' };
+      
+      if (ext === 'csv') {
+        readOptions.raw = true;
+      }
+
+      const workbook = XLSX.read(data, readOptions);
+
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error('Файл не содержит листов');
+      }
+
+      const detection = detectFileType(workbook);
+
+      fileInfo.textContent = detection.reason;
+      fileInfo.className = 'file-info debug';
+
+      showToast('Определено: ' + detection.typeName + ' (' + detection.numCols + ' столбцов)', 'orange');
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', detection.fileType);
+
+      fetch('upload.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (result.success) {
+          fileInfo.textContent = 'Успешно: ' + result.message;
+          fileInfo.className = 'file-info success';
+          showToast(result.message, 'green');
+          fileInput.value = '';
+        } else {
+          fileInfo.textContent = 'Ошибка сервера: ' + result.message;
+          fileInfo.className = 'file-info error';
+          showToast(result.message, 'red');
+        }
+      })
+      .catch(() => {
+        fileInfo.textContent = 'Ошибка сети при загрузке';
+        fileInfo.className = 'file-info error';
+        showToast('Ошибка сети или сервера', 'red');
+      });
+
+    } catch (err) {
+      fileInfo.textContent = 'Ошибка чтения файла: ' + err.message;
+      fileInfo.className = 'file-info error';
+      showToast('Не удалось прочитать содержимое файла', 'red');
+    }
+  };
+
+  reader.onerror = () => {
+    fileInfo.textContent = 'Ошибка чтения файла';
+    fileInfo.className = 'file-info error';
+    showToast('Не удалось прочитать файл', 'red');
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    processAndUpload(e.target.files[0]);
+  }
+});
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('dragover');
+});
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) {
+    fileInput.files = e.dataTransfer.files;
+    processAndUpload(e.dataTransfer.files[0]);
+  }
+});
+
+const runawayBtn = document.getElementById('runawayBtn');
+runawayBtn.addEventListener('mouseenter', () => {
+  const maxX = window.innerWidth - runawayBtn.offsetWidth - 40;
+  const maxY = window.innerHeight - runawayBtn.offsetHeight - 40;
+  const randomX = Math.max(20, Math.random() * maxX);
+  const randomY = Math.max(20, Math.random() * maxY);
+  runawayBtn.style.position = 'fixed';
+  runawayBtn.style.left = randomX + 'px';
+  runawayBtn.style.top = randomY + 'px';
+  runawayBtn.style.zIndex = '9999';
+});
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.key === 'u')) e.preventDefault();
+});
+</script>
+</body>
+</html>

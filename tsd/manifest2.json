@@ -1,0 +1,11 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Этикетки",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Этикетки",
+  "start_url": "/",
+  "theme_color": "#ffffff"
+}
